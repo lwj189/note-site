@@ -1,0 +1,222 @@
+const express = require('express');
+const multer = require('multer');
+const { marked } = require('marked');
+const hljs = require('highlight.js');
+const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
+
+// ---- Config ----
+const UPLOAD_SECRET = process.env.UPLOAD_SECRET || 'changeme123';
+const PORT = process.env.PORT || 3000;
+const SITE_TITLE = process.env.SITE_TITLE || 'My Notes';
+const DATA_DIR = path.join(__dirname, 'data');
+const NOTES_FILE = path.join(DATA_DIR, 'notes.json');
+const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
+
+[DATA_DIR, UPLOADS_DIR].forEach(dir => {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+});
+
+// ---- Data helpers ----
+function loadNotes() {
+  try {
+    if (!fs.existsSync(NOTES_FILE)) return [];
+    return JSON.parse(fs.readFileSync(NOTES_FILE, 'utf-8'));
+  } catch { return []; }
+}
+
+function saveNotes(notes) {
+  fs.writeFileSync(NOTES_FILE, JSON.stringify(notes, null, 2));
+}
+
+// ---- Marked config ----
+marked.setOptions({
+  highlight(code, lang) {
+    if (lang && hljs.getLanguage(lang)) {
+      return hljs.highlight(code, { language: lang }).value;
+    }
+    return hljs.highlightAuto(code).value;
+  },
+  breaks: true,
+  gfm: true
+});
+
+// ---- Express setup ----
+const app = express();
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+app.use(express.static(path.join(__dirname, 'public')));
+app.use('/img', express.static(UPLOADS_DIR));
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
+// ---- Multer setup ----
+const fileUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter(req, file, cb) {
+    const allowed = ['.txt', '.cpp', '.md', '.h', '.hpp', '.c', '.py', '.js', '.ts', '.java', '.cs', '.go', '.rs', '.rb', '.php', '.html', '.css', '.json', '.xml', '.yaml', '.yml', '.sql', '.sh', '.bat', '.ps1'];
+    cb(null, allowed.includes(path.extname(file.originalname).toLowerCase()));
+  }
+});
+
+const imageUpload = multer({
+  storage: multer.diskStorage({
+    destination: UPLOADS_DIR,
+    filename(req, file, cb) {
+      const ext = path.extname(file.originalname);
+      cb(null, Date.now() + '-' + crypto.randomBytes(4).toString('hex') + ext);
+    }
+  }),
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter(req, file, cb) {
+    const allowed = ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp', '.bmp'];
+    cb(null, allowed.includes(path.extname(file.originalname).toLowerCase()));
+  }
+});
+
+// ---- Helpers ----
+const LANG_MAP = {
+  '.cpp': 'cpp', '.c': 'c', '.h': 'c', '.hpp': 'cpp',
+  '.py': 'python', '.js': 'javascript', '.ts': 'typescript',
+  '.java': 'java', '.cs': 'csharp', '.go': 'go', '.rs': 'rust',
+  '.rb': 'ruby', '.php': 'php', '.html': 'xml', '.css': 'css',
+  '.json': 'json', '.xml': 'xml', '.yaml': 'yaml', '.yml': 'yaml',
+  '.sql': 'sql', '.sh': 'bash', '.bat': 'dos', '.ps1': 'powershell',
+  '.md': 'md', '.txt': 'txt'
+};
+
+function renderContent(note) {
+  if (note.type === 'md') return marked.parse(note.content);
+  if (note.type === 'txt') return '<pre class="plain">' + esc(note.content) + '</pre>';
+  return marked.parse('```' + note.type + '\n' + note.content + '\n```');
+}
+
+function esc(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function validSlug(s) {
+  return /^[\w一-鿿\-\+]+$/.test(s);
+}
+
+// ---- Public routes ----
+
+app.get('/', (req, res) => {
+  const notes = loadNotes();
+  notes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  res.render('home', { notes, site: SITE_TITLE, query: '' });
+});
+
+app.get('/search', (req, res) => {
+  const q = (req.query.q || '').toLowerCase().trim();
+  let notes = loadNotes();
+  if (q) {
+    notes = notes.filter(n =>
+      n.title.toLowerCase().includes(q) ||
+      n.content.toLowerCase().includes(q) ||
+      n.slug.toLowerCase().includes(q)
+    );
+  }
+  notes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  res.render('search', { notes, site: SITE_TITLE, query: q });
+});
+
+app.get('/note/:slug', (req, res) => {
+  const note = loadNotes().find(n => n.slug === req.params.slug);
+  if (!note) return res.status(404).render('404', { site: SITE_TITLE });
+  res.render('note', { note, html: renderContent(note), site: SITE_TITLE });
+});
+
+app.get('/list', (req, res) => {
+  const notes = loadNotes();
+  notes.sort((a, b) => a.title.localeCompare(b.title, 'zh'));
+  res.render('list', { notes, site: SITE_TITLE });
+});
+
+// ---- Secret upload routes ----
+const up = '/upload-' + UPLOAD_SECRET;
+
+app.get(up, (req, res) => {
+  const editSlug = req.query.edit || '';
+  const notes = loadNotes();
+  notes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  const editNote = editSlug ? notes.find(n => n.slug === editSlug) : null;
+  res.render('upload', { notes, site: SITE_TITLE, secret: UPLOAD_SECRET, editNote });
+});
+
+// Create / update note from form
+app.post('/api/notes', (req, res) => {
+  const { title, slug, content, type } = req.body;
+  if (!title || !slug || !content) return res.status(400).json({ error: '标题、网址和内容不能为空' });
+  if (!validSlug(slug)) return res.status(400).json({ error: '网址格式不合法' });
+
+  const notes = loadNotes();
+  const existing = notes.find(n => n.slug === slug);
+  const now = new Date().toISOString();
+  if (existing) {
+    existing.title = title;
+    existing.content = content;
+    existing.type = type || 'md';
+    existing.updatedAt = now;
+  } else {
+    notes.push({ id: crypto.randomBytes(8).toString('hex'), slug, title, content, type: type || 'md', createdAt: now, updatedAt: now });
+  }
+  saveNotes(notes);
+  res.json({ ok: true, slug });
+});
+
+// Upload file as note
+app.post('/api/upload-file', fileUpload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: '请选择文件' });
+
+  const ext = path.extname(req.file.originalname).toLowerCase();
+  const name = path.basename(req.file.originalname, ext);
+  const content = req.file.buffer.toString('utf-8');
+  const slug = req.body.slug || name.replace(/[^\w一-鿿]/g, '-').replace(/-+/g, '-');
+  const title = req.body.title || name;
+  const type = LANG_MAP[ext] || 'txt';
+
+  const notes = loadNotes();
+  const existing = notes.find(n => n.slug === slug);
+  const now = new Date().toISOString();
+  if (existing) {
+    existing.title = title; existing.content = content; existing.type = type; existing.updatedAt = now;
+  } else {
+    notes.push({ id: crypto.randomBytes(8).toString('hex'), slug, title, content, type, createdAt: now, updatedAt: now });
+  }
+  saveNotes(notes);
+  res.json({ ok: true, slug, title });
+});
+
+// Upload image
+app.post('/api/upload-image', imageUpload.single('image'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: '请选择图片' });
+  const url = '/img/' + req.file.filename;
+  res.json({ ok: true, url, md: '![' + (req.body.alt || 'image') + '](' + url + ')' });
+});
+
+// Delete note
+app.delete('/api/notes/:slug', (req, res) => {
+  const notes = loadNotes();
+  const idx = notes.findIndex(n => n.slug === req.params.slug);
+  if (idx === -1) return res.status(404).json({ error: 'not found' });
+  notes.splice(idx, 1);
+  saveNotes(notes);
+  res.json({ ok: true });
+});
+
+// JSON API
+app.get('/api/notes', (req, res) => {
+  res.json(loadNotes().map(n => ({ slug: n.slug, title: n.title, type: n.type, updatedAt: n.updatedAt })));
+});
+
+// 404
+app.use((req, res) => res.status(404).render('404', { site: SITE_TITLE }));
+
+// ---- Start ----
+app.listen(PORT, () => {
+  console.log(`Notes site: http://localhost:${PORT}`);
+  console.log(`Upload page: http://localhost:${PORT}${up}`);
+});

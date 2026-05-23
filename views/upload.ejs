@@ -1,0 +1,224 @@
+<%- include('header', { heading: '管理笔记' }) %>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('write')">✍️ 撰写笔记</button>
+  <button class="tab-btn" onclick="switchTab('file')">📁 上传文件</button>
+  <button class="tab-btn" onclick="switchTab('image')">🖼️ 上传图片</button>
+  <button class="tab-btn" onclick="switchTab('manage')">📋 管理笔记</button>
+</div>
+
+<!-- Tab 1: Write -->
+<div id="tab-write" class="tab-panel active">
+  <div class="upload-section">
+    <h2><%= editNote ? '编辑笔记' : '撰写新笔记' %></h2>
+    <form id="write-form">
+      <label>标题</label>
+      <input type="text" name="title" id="w-title" value="<%= editNote ? editNote.title : '' %>" required>
+
+      <label>网址路径（如：my-first-note 或 我的第一章）</label>
+      <input type="text" name="slug" id="w-slug" value="<%= editNote ? editNote.slug : '' %>" required placeholder="note-url-path">
+
+      <label>类型</label>
+      <div style="margin-top:6px">
+        <select name="type" id="w-type" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:.9rem">
+          <option value="md" <%= editNote && editNote.type === 'md' ? 'selected' : '' %>>Markdown (.md)</option>
+          <option value="txt" <%= editNote && editNote.type === 'txt' ? 'selected' : '' %>>纯文本 (.txt)</option>
+          <option value="cpp" <%= editNote && editNote.type === 'cpp' ? 'selected' : '' %>>C++ (.cpp)</option>
+          <option value="c" <%= editNote && editNote.type === 'c' ? 'selected' : '' %>>C (.c)</option>
+          <option value="python" <%= editNote && editNote.type === 'python' ? 'selected' : '' %>>Python (.py)</option>
+          <option value="javascript" <%= editNote && editNote.type === 'javascript' ? 'selected' : '' %>>JavaScript (.js)</option>
+          <option value="typescript" <%= editNote && editNote.type === 'typescript' ? 'selected' : '' %>>TypeScript (.ts)</option>
+          <option value="java" <%= editNote && editNote.type === 'java' ? 'selected' : '' %>>Java (.java)</option>
+          <option value="go" <%= editNote && editNote.type === 'go' ? 'selected' : '' %>>Go (.go)</option>
+          <option value="rust" <%= editNote && editNote.type === 'rust' ? 'selected' : '' %>>Rust (.rs)</option>
+          <option value="csharp" <%= editNote && editNote.type === 'csharp' ? 'selected' : '' %>>C# (.cs)</option>
+          <option value="sql" <%= editNote && editNote.type === 'sql' ? 'selected' : '' %>>SQL (.sql)</option>
+          <option value="bash" <%= editNote && editNote.type === 'bash' ? 'selected' : '' %>>Bash (.sh)</option>
+          <option value="json" <%= editNote && editNote.type === 'json' ? 'selected' : '' %>>JSON (.json)</option>
+          <option value="xml" <%= editNote && editNote.type === 'xml' ? 'selected' : '' %>>HTML/XML</option>
+          <option value="css" <%= editNote && editNote.type === 'css' ? 'selected' : '' %>>CSS</option>
+        </select>
+      </div>
+
+      <label>内容（Markdown 格式）</label>
+      <textarea name="content" id="w-content" required><%= editNote ? editNote.content : '' %></textarea>
+
+      <button type="submit" class="btn"><%= editNote ? '💾 更新笔记' : '📝 发布笔记' %></button>
+      <% if (editNote) { %>
+      <a href="/upload-<%= secret %>" class="btn btn-outline" style="margin-left:8px">取消编辑</a>
+      <% } %>
+    </form>
+    <div id="write-result" class="result"></div>
+  </div>
+</div>
+
+<!-- Tab 2: Upload file -->
+<div id="tab-file" class="tab-panel">
+  <div class="upload-section">
+    <h2>上传文件生成笔记</h2>
+    <p style="color:var(--muted);font-size:.88rem;margin-bottom:16px">支持 .txt / .cpp / .md / .py / .js / .java 等文本文件</p>
+    <form id="file-form" enctype="multipart/form-data">
+      <label>选择文件</label>
+      <input type="file" name="file" id="f-file" required>
+
+      <label>标题（可选，默认使用文件名）</label>
+      <input type="text" name="title" id="f-title" placeholder="笔记标题">
+
+      <label>网址路径（可选，默认使用文件名）</label>
+      <input type="text" name="slug" id="f-slug" placeholder="note-url-path">
+
+      <button type="submit" class="btn">📁 上传并创建笔记</button>
+    </form>
+    <div id="file-result" class="result"></div>
+  </div>
+</div>
+
+<!-- Tab 3: Upload image -->
+<div id="tab-image" class="tab-panel">
+  <div class="upload-section">
+    <h2>上传图片</h2>
+    <p style="color:var(--muted);font-size:.88rem;margin-bottom:16px">上传后在笔记中使用 <code>![描述](/img/filename.jpg)</code> 引用</p>
+    <form id="image-form" enctype="multipart/form-data">
+      <label>选择图片</label>
+      <input type="file" name="image" id="i-file" accept="image/*" required>
+
+      <label>图片描述（可选）</label>
+      <input type="text" name="alt" id="i-alt" placeholder="图片描述">
+
+      <button type="submit" class="btn">🖼️ 上传图片</button>
+    </form>
+    <div id="image-result" class="image-result"></div>
+  </div>
+</div>
+
+<!-- Tab 4: Manage -->
+<div id="tab-manage" class="tab-panel">
+  <div class="upload-section">
+    <h2>所有笔记 (<%= notes.length %>)</h2>
+    <% if (notes.length === 0) { %>
+    <p style="color:var(--muted)">还没有笔记。</p>
+    <% } else { %>
+    <div class="manage-list">
+      <% notes.forEach(n => { %>
+      <div class="manage-item">
+        <div>
+          <strong><%= n.title %></strong>
+          <span class="badge"><%= n.type %></span>
+          <span style="font-size:.78rem;color:var(--muted);margin-left:8px">/note/<%= n.slug %></span>
+        </div>
+        <div class="actions">
+          <a href="/note/<%= encodeURIComponent(n.slug) %>" class="btn btn-sm btn-outline" target="_blank">查看</a>
+          <a href="/upload-<%= secret %>?edit=<%= encodeURIComponent(n.slug) %>" class="btn btn-sm btn-outline">编辑</a>
+          <button class="btn btn-sm btn-danger" onclick="delNote('<%= n.slug %>')">删除</button>
+        </div>
+      </div>
+      <% }) %>
+    </div>
+    <% } %>
+  </div>
+</div>
+
+<script>
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelector('[onclick="switchTab(\'' + name + '\')"]').classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// Write form
+document.getElementById('write-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const r = document.getElementById('write-result');
+  r.className = 'result';
+  r.textContent = '保存中...';
+  try {
+    const res = await fetch('/api/notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: document.getElementById('w-title').value,
+        slug: document.getElementById('w-slug').value,
+        content: document.getElementById('w-content').value,
+        type: document.getElementById('w-type').value
+      })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      r.className = 'result success';
+      r.innerHTML = '✅ 笔记已保存！<a href="/note/' + encodeURIComponent(data.slug) + '" target="_blank">查看</a>';
+    } else {
+      r.className = 'result error';
+      r.textContent = '❌ ' + data.error;
+    }
+  } catch (err) {
+    r.className = 'result error';
+    r.textContent = '❌ 请求失败：' + err.message;
+  }
+});
+
+// File form
+document.getElementById('file-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const r = document.getElementById('file-result');
+  r.className = 'result';
+  r.textContent = '上传中...';
+  try {
+    const fd = new FormData();
+    fd.append('file', document.getElementById('f-file').files[0]);
+    const title = document.getElementById('f-title').value;
+    const slug = document.getElementById('f-slug').value;
+    if (title) fd.append('title', title);
+    if (slug) fd.append('slug', slug);
+    const res = await fetch('/api/upload-file', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.ok) {
+      r.className = 'result success';
+      r.innerHTML = '✅ 笔记已创建！<a href="/note/' + encodeURIComponent(data.slug) + '" target="_blank">查看 ' + data.title + '</a>';
+    } else {
+      r.className = 'result error';
+      r.textContent = '❌ ' + data.error;
+    }
+  } catch (err) {
+    r.className = 'result error';
+    r.textContent = '❌ 上传失败：' + err.message;
+  }
+});
+
+// Image form
+document.getElementById('image-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const r = document.getElementById('image-result');
+  r.textContent = '上传中...';
+  try {
+    const fd = new FormData();
+    fd.append('image', document.getElementById('i-file').files[0]);
+    const alt = document.getElementById('i-alt').value;
+    if (alt) fd.append('alt', alt);
+    const res = await fetch('/api/upload-image', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.ok) {
+      r.innerHTML = '✅ 上传成功！<br><img src="' + data.url + '" alt="preview"><br>Markdown: <code>' + data.md + '</code><br>URL: <code>' + data.url + '</code>';
+    } else {
+      r.textContent = '❌ ' + data.error;
+    }
+  } catch (err) {
+    r.textContent = '❌ 上传失败：' + err.message;
+  }
+});
+
+// Delete note
+async function delNote(slug) {
+  if (!confirm('确定删除笔记 "' + slug + '" 吗？此操作不可恢复。')) return;
+  try {
+    const res = await fetch('/api/notes/' + encodeURIComponent(slug), { method: 'DELETE' });
+    const data = await res.json();
+    if (data.ok) location.reload();
+    else alert('删除失败：' + data.error);
+  } catch (err) {
+    alert('删除失败：' + err.message);
+  }
+}
+</script>
+
+<%- include('footer') %>

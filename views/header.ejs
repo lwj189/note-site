@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= typeof heading !== 'undefined' ? heading + ' - ' : '' %><%= site %></title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/hljs-theme.css">
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="/" class="nav-title"><%= site %></a>
+    <div class="nav-links">
+      <a href="/">首页</a>
+      <a href="/list">全部笔记</a>
+      <a href="/search">搜索</a>
+    </div>
+  </div>
+</nav>
+<main>
