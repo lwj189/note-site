@@ -1,0 +1,26 @@
+<%- include('header', { heading: '搜索' }) %>
+
+<form class="search-bar" action="/search" method="get">
+  <input type="text" name="q" placeholder="搜索笔记..." value="<%= query %>" autofocus>
+  <button type="submit">搜索</button>
+</form>
+
+<% if (query) { %>
+<p style="color:var(--muted);margin-bottom:16px">搜索 "<strong><%= query %></strong>" 找到 <%= notes.length %> 篇笔记</p>
+<% } %>
+
+<% if (notes.length === 0) { %>
+<div class="empty"><p>没有找到匹配的笔记。</p></div>
+<% } else { %>
+<div class="note-list">
+  <% notes.forEach(n => { %>
+  <a href="/note/<%= encodeURIComponent(n.slug) %>" class="note-card">
+    <h3><%= n.title %> <span class="badge"><%= n.type %></span></h3>
+    <div class="meta"><%= new Date(n.updatedAt).toLocaleDateString('zh-CN') %></div>
+    <div class="preview"><%= n.content.replace(/[#*`\[\]!>]/g, '').substring(0, 120) %></div>
+  </a>
+  <% }) %>
+</div>
+<% } %>
+
+<%- include('footer') %>

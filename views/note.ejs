@@ -1,0 +1,13 @@
+<%- include('header', { heading: note.title }) %>
+
+<article>
+  <div class="note-header">
+    <h1><%= note.title %></h1>
+    <div class="date">更新于 <%= new Date(note.updatedAt).toLocaleString('zh-CN') %> &middot; 类型：<%= note.type %></div>
+  </div>
+  <div class="note-body"><%- html %></div>
+</article>
+
+<a href="/" class="back">&larr; 返回首页</a>
+
+<%- include('footer') %>
