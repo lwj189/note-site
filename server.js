@@ -10,6 +10,9 @@ const crypto = require('crypto');
 const UPLOAD_SECRET = process.env.UPLOAD_SECRET || 'changeme123';
 const PORT = process.env.PORT || 3000;
 const SITE_TITLE = process.env.SITE_TITLE || 'My Notes';
+const GIT_TOKEN = process.env.GIT_TOKEN || '';
+const GIT_REPO = process.env.GIT_REPO || 'github.com/lwj189/note-site.git';
+const GIT_USER = process.env.GIT_USER || 'lwj189';
 const DATA_DIR = path.join(__dirname, 'data');
 const NOTES_FILE = path.join(DATA_DIR, 'notes.json');
 const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
@@ -28,6 +31,49 @@ function loadNotes() {
 
 function saveNotes(notes) {
   fs.writeFileSync(NOTES_FILE, JSON.stringify(notes, null, 2));
+}
+
+// ---- Git auto-sync ----
+const { exec } = require('child_process');
+
+function gitSync(callback) {
+  if (!GIT_TOKEN) {
+    console.log('[git] GIT_TOKEN not set, skip auto-sync');
+    if (callback) callback();
+    return;
+  }
+  const remote = `https://${GIT_TOKEN}@${GIT_REPO}`;
+  const cmds = [
+    'git add data/',
+    `git -c user.name="${GIT_USER}" -c user.email="${GIT_USER}@users.noreply.github.com" commit -m "auto: update notes"`,
+    `git push ${remote} main`
+  ];
+  const run = (i) => {
+    if (i >= cmds.length) {
+      console.log('[git] sync done');
+      if (callback) callback();
+      return;
+    }
+    exec(cmds[i], { cwd: __dirname, timeout: 30000 }, (err, stdout, stderr) => {
+      if (err && i === 0 && err.message.includes('nothing to commit')) {
+        console.log('[git] nothing to commit, skip');
+        if (callback) callback();
+        return;
+      }
+      if (err && i === 0 && err.message.includes('nothing added to commit')) {
+        console.log('[git] nothing to commit, skip');
+        if (callback) callback();
+        return;
+      }
+      if (err) {
+        console.error(`[git] error: ${stderr || err.message}`);
+        if (callback) callback(err);
+        return;
+      }
+      run(i + 1);
+    });
+  };
+  run(0);
 }
 
 // ---- Marked config ----
@@ -164,6 +210,7 @@ app.post('/api/notes', (req, res) => {
     notes.push({ id: crypto.randomBytes(8).toString('hex'), slug, title, content, type: type || 'md', createdAt: now, updatedAt: now });
   }
   saveNotes(notes);
+  gitSync();
   res.json({ ok: true, slug });
 });
 
@@ -187,13 +234,13 @@ app.post('/api/upload-file', fileUpload.single('file'), (req, res) => {
     notes.push({ id: crypto.randomBytes(8).toString('hex'), slug, title, content, type, createdAt: now, updatedAt: now });
   }
   saveNotes(notes);
+  gitSync();
   res.json({ ok: true, slug, title });
 });
-
-// Upload image
 app.post('/api/upload-image', imageUpload.single('image'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: '请选择图片' });
   const url = '/img/' + req.file.filename;
+  gitSync();
   res.json({ ok: true, url, md: '![' + (req.body.alt || 'image') + '](' + url + ')' });
 });
 
@@ -204,6 +251,7 @@ app.delete('/api/notes/:slug', (req, res) => {
   if (idx === -1) return res.status(404).json({ error: 'not found' });
   notes.splice(idx, 1);
   saveNotes(notes);
+  gitSync();
   res.json({ ok: true });
 });
 
