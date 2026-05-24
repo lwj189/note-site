@@ -146,7 +146,11 @@ document.getElementById('write-form').addEventListener('submit', async e => {
     const data = await res.json();
     if (data.ok) {
       r.className = 'result success';
-      r.innerHTML = '✅ 笔记已保存！<a href="/note/' + encodeURIComponent(data.slug) + '" target="_blank">查看</a>';
+      r.innerHTML = '✅ 笔记已保存！<a href="/note/' + encodeURIComponent(data.slug) + '" target="_blank">查看</a>&nbsp;可以继续撰写下一篇。';
+      document.getElementById('w-title').value = '';
+      document.getElementById('w-slug').value = '';
+      document.getElementById('w-content').value = '';
+      document.getElementById('w-type').value = 'md';
     } else {
       r.className = 'result error';
       r.textContent = '❌ ' + data.error;
@@ -174,7 +178,10 @@ document.getElementById('file-form').addEventListener('submit', async e => {
     const data = await res.json();
     if (data.ok) {
       r.className = 'result success';
-      r.innerHTML = '✅ 笔记已创建！<a href="/note/' + encodeURIComponent(data.slug) + '" target="_blank">查看 ' + data.title + '</a>';
+      r.innerHTML = '✅ 笔记已创建！<a href="/note/' + encodeURIComponent(data.slug) + '" target="_blank">查看 ' + data.title + '</a>&nbsp;可以继续上传下一篇。';
+      document.getElementById('f-file').value = '';
+      document.getElementById('f-title').value = '';
+      document.getElementById('f-slug').value = '';
     } else {
       r.className = 'result error';
       r.textContent = '❌ ' + data.error;
@@ -198,7 +205,9 @@ document.getElementById('image-form').addEventListener('submit', async e => {
     const res = await fetch('/api/upload-image', { method: 'POST', body: fd });
     const data = await res.json();
     if (data.ok) {
-      r.innerHTML = '✅ 上传成功！<br><img src="' + data.url + '" alt="preview"><br>Markdown: <code>' + data.md + '</code><br>URL: <code>' + data.url + '</code>';
+      r.innerHTML = '✅ 上传成功！<br><img src="' + data.url + '" alt="preview"><br>Markdown: <code>' + data.md + '</code><br>URL: <code>' + data.url + '</code>&nbsp;可以继续上传下一张。';
+      document.getElementById('i-file').value = '';
+      document.getElementById('i-alt').value = '';
     } else {
       r.textContent = '❌ ' + data.error;
     }
