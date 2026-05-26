@@ -1,0 +1,10 @@
+文件 | 改动
+views/gallery.ejs | 新建 — 网格展示图片缩略图，点击弹出 Lightbox 显示大图 + Markdown/URL/HTML 引用（可一键复制），每张图片悬浮显示删除按钮
+views/home.ejs | 图片上传标签页改为多选上传，完成后链接到图库
+views/header.ejs | 导航栏新增"图库"入口
+server.js | 新增 4 个路由：/gallery 页面、/api/images 列表、/api/upload-images 多文件上传（最多 10 张）、/api/images/:filename 删除
+public/style.css | 新增图库网格、Lightbox 弹出层、悬浮删除按钮等样式
+views/home.ejs 新增可折叠管理面板（<details>），包含撰写笔记、上传文件、上传图片、笔记列表 4个标签页，笔记列表在下方展示
+server.js / 路由支持 ?edit= 参数；旧上传路由改为 302 重定向到 /
+public/style.css 新增管理面板折叠按钮样式
+
