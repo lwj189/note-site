@@ -85,6 +85,23 @@ main { flex: 1; max-width: 860px; width: 100%; margin: 0 auto; padding: 32px 20p
 }
 .search-bar button:hover { background: var(--accent-hover); }
 
+/* ---- Admin panel ---- */
+#admin-panel { margin-bottom: 32px; }
+.admin-toggle {
+  cursor: pointer;
+  padding: 8px 14px;
+  font-size: .92rem;
+  font-weight: 600;
+  color: var(--accent);
+  border: 1.5px solid var(--accent);
+  border-radius: 6px;
+  display: inline-block;
+  user-select: none;
+  transition: background .15s;
+}
+.admin-toggle:hover { background: #eef2ff; }
+#admin-panel[open] .admin-toggle { margin-bottom: 20px; }
+
 /* ---- Note list ---- */
 .note-list { display: flex; flex-direction: column; gap: 12px; }
 .note-card {
@@ -275,6 +292,158 @@ pre.plain {
 
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
+
+/* ---- Gallery ---- */
+.gallery-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+.gallery-count { font-size: .92rem; color: var(--muted); }
+.gallery-upload-btn {
+  cursor: pointer;
+  margin-top: 0;
+}
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+.gallery-card {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--card-bg);
+  cursor: pointer;
+  transition: all .15s;
+}
+.gallery-card:hover { border-color: var(--accent); box-shadow: 0 2px 8px rgba(67,97,238,.1); }
+.gallery-thumb {
+  width: 100%;
+  height: 140px;
+  overflow: hidden;
+  background: #f1f1f3;
+}
+.gallery-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.gallery-info {
+  padding: 10px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+}
+.gallery-name {
+  font-size: .8rem;
+  font-weight: 600;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gallery-size, .gallery-date {
+  font-size: .72rem;
+  color: var(--muted);
+}
+.gallery-del {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 4px;
+  background: rgba(0,0,0,.55);
+  color: #fff;
+  font-size: .75rem;
+  cursor: pointer;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity .15s;
+}
+.gallery-card:hover .gallery-del { opacity: 1; }
+.gallery-del:hover { background: #dc2626; }
+
+/* Lightbox */
+.lightbox {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.75);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+.lightbox.active { display: flex; }
+.lightbox-content {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 700px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+}
+.lightbox-close {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--muted);
+}
+.lightbox-close:hover { color: var(--fg); }
+.lightbox img {
+  width: 100%;
+  border-radius: 8px;
+  max-height: 400px;
+  object-fit: contain;
+  background: #f1f1f3;
+}
+.lightbox-refs { margin-top: 20px; }
+.ref-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.ref-row label {
+  font-size: .85rem;
+  font-weight: 600;
+  min-width: 70px;
+  color: var(--muted);
+}
+.copy-group {
+  flex: 1;
+  display: flex;
+  gap: 6px;
+}
+.copy-group input {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  font-size: .82rem;
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  outline: none;
+}
+.copy-group button {
+  padding: 7px 14px;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font-size: .82rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.copy-group button:hover { background: var(--accent-hover); }
 
 /* ---- Footer ---- */
 footer {

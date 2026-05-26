@@ -1,0 +1,140 @@
+<%- include('header', { heading: '图库' }) %>
+
+<div class="gallery-toolbar">
+  <span class="gallery-count">共 <strong><%= images.length %></strong> 张图片</span>
+  <label class="btn gallery-upload-btn">
+    上传图片
+    <input type="file" id="gallery-upload-input" accept="image/*" multiple hidden>
+  </label>
+</div>
+
+<div id="upload-progress" class="result"></div>
+
+<% if (images.length === 0) { %>
+<div class="empty"><p>还没有图片，点击"上传图片"开始添加。</p></div>
+<% } else { %>
+<div class="gallery-grid">
+  <% images.forEach(img => { %>
+  <div class="gallery-card" data-filename="<%= img.filename %>" data-url="<%= img.url %>" data-size="<%= img.size %>" data-date="<%= img.date %>">
+    <div class="gallery-thumb">
+      <img src="<%= img.url %>" alt="<%= img.filename %>" loading="lazy">
+    </div>
+    <div class="gallery-info">
+      <span class="gallery-name" title="<%= img.filename %>"><%= img.filename.length > 20 ? img.filename.slice(0, 17) + '...' : img.filename %></span>
+      <span class="gallery-size"><%= img.sizeFmt %></span>
+      <span class="gallery-date"><%= img.dateFmt %></span>
+    </div>
+    <button class="gallery-del" onclick="delImage('<%= img.filename %>', event)" title="删除">x</button>
+  </div>
+  <% }) %>
+</div>
+<% } %>
+
+<!-- Lightbox -->
+<div id="lightbox" class="lightbox" onclick="closeLightbox(event)">
+  <div class="lightbox-content">
+    <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+    <img id="lightbox-img" src="" alt="">
+    <div class="lightbox-refs">
+      <div class="ref-row">
+        <label>Markdown</label>
+        <div class="copy-group">
+          <input type="text" id="ref-md" readonly>
+          <button onclick="copyRef('ref-md')">复制</button>
+        </div>
+      </div>
+      <div class="ref-row">
+        <label>URL</label>
+        <div class="copy-group">
+          <input type="text" id="ref-url" readonly>
+          <button onclick="copyRef('ref-url')">复制</button>
+        </div>
+      </div>
+      <div class="ref-row">
+        <label>HTML</label>
+        <div class="copy-group">
+          <input type="text" id="ref-html" readonly>
+          <button onclick="copyRef('ref-html')">复制</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('.gallery-card').forEach(card => {
+  card.addEventListener('click', function(e) {
+    if (e.target.closest('.gallery-del')) return;
+    const url = this.dataset.url;
+    const alt = this.dataset.filename;
+    document.getElementById('lightbox-img').src = url;
+    document.getElementById('ref-md').value = '![' + alt + '](' + url + ')';
+    document.getElementById('ref-url').value = url;
+    document.getElementById('ref-html').value = '<img src="' + url + '" alt="' + alt + '">';
+    document.getElementById('lightbox').classList.add('active');
+  });
+});
+
+function closeLightbox(e) {
+  if (e && e.target !== document.getElementById('lightbox')) return;
+  document.getElementById('lightbox').classList.remove('active');
+}
+
+function copyRef(id) {
+  const el = document.getElementById(id);
+  el.select();
+  document.execCommand('copy');
+  const btn = el.nextElementSibling;
+  btn.textContent = '已复制';
+  setTimeout(() => btn.textContent = '复制', 1500);
+}
+
+async function delImage(filename, event) {
+  event.stopPropagation();
+  if (!confirm('确定删除 ' + filename + ' 吗？')) return;
+  try {
+    const res = await fetch('/api/images/' + encodeURIComponent(filename), { method: 'DELETE' });
+    const data = await res.json();
+    if (data.ok) {
+      document.querySelector('.gallery-card[data-filename="' + filename + '"]').remove();
+      const count = document.querySelectorAll('.gallery-card').length;
+      document.querySelector('.gallery-count strong').textContent = count;
+      if (count === 0) location.reload();
+    } else {
+      alert('删除失败：' + data.error);
+    }
+  } catch (err) {
+    alert('删除失败：' + err.message);
+  }
+}
+
+document.getElementById('gallery-upload-input').addEventListener('change', async function() {
+  const files = this.files;
+  if (files.length === 0) return;
+  const r = document.getElementById('upload-progress');
+  r.className = 'result';
+  r.textContent = '上传 ' + files.length + ' 张图片中...';
+
+  const fd = new FormData();
+  for (const f of files) fd.append('images', f);
+
+  try {
+    const res = await fetch('/api/upload-images', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.ok) {
+      r.className = 'result success';
+      r.textContent = '已上传 ' + data.count + ' 张图片';
+      this.value = '';
+      location.reload();
+    } else {
+      r.className = 'result error';
+      r.textContent = data.error;
+    }
+  } catch (err) {
+    r.className = 'result error';
+    r.textContent = '上传失败：' + err.message;
+  }
+});
+</script>
+
+<%- include('footer') %>

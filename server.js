@@ -147,12 +147,37 @@ function validSlug(s) {
   return /^[\w一-鿿\-\+]+$/.test(s);
 }
 
+function listImages() {
+  if (!fs.existsSync(UPLOADS_DIR)) return [];
+  const exts = ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp', '.bmp'];
+  return fs.readdirSync(UPLOADS_DIR)
+    .filter(f => exts.includes(path.extname(f).toLowerCase()))
+    .map(f => {
+      const stat = fs.statSync(path.join(UPLOADS_DIR, f));
+      return {
+        filename: f, url: '/img/' + f,
+        size: stat.size, sizeFmt: formatSize(stat.size),
+        date: stat.mtime.toISOString(),
+        dateFmt: stat.mtime.toLocaleDateString('zh-CN')
+      };
+    })
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
 // ---- Public routes ----
 
 app.get('/', (req, res) => {
+  const editSlug = req.query.edit || '';
   const notes = loadNotes();
   notes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-  res.render('home', { notes, site: SITE_TITLE, query: '' });
+  const editNote = editSlug ? notes.find(n => n.slug === editSlug) : null;
+  res.render('home', { notes, site: SITE_TITLE, query: '', editNote });
 });
 
 app.get('/search', (req, res) => {
@@ -181,15 +206,16 @@ app.get('/list', (req, res) => {
   res.render('list', { notes, site: SITE_TITLE });
 });
 
-// ---- Secret upload routes ----
+app.get('/gallery', (req, res) => {
+  res.render('gallery', { images: listImages(), site: SITE_TITLE });
+});
+
+// ---- Secret upload route (redirects to home) ----
 const up = '/upload-' + UPLOAD_SECRET;
 
 app.get(up, (req, res) => {
-  const editSlug = req.query.edit || '';
-  const notes = loadNotes();
-  notes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-  const editNote = editSlug ? notes.find(n => n.slug === editSlug) : null;
-  res.render('upload', { notes, site: SITE_TITLE, secret: UPLOAD_SECRET, editNote });
+  const qs = req.query.edit ? '?edit=' + encodeURIComponent(req.query.edit) : '';
+  res.redirect('/' + qs);
 });
 
 // Create / update note from form
@@ -244,6 +270,27 @@ app.post('/api/upload-image', imageUpload.single('image'), (req, res) => {
   res.json({ ok: true, url, md: '![' + (req.body.alt || 'image') + '](' + url + ')' });
 });
 
+// Multi image upload
+app.post('/api/upload-images', imageUpload.array('images', 10), (req, res) => {
+  if (!req.files || req.files.length === 0) return res.status(400).json({ error: '请选择图片' });
+  gitSync();
+  res.json({ ok: true, count: req.files.length });
+});
+
+// List images
+app.get('/api/images', (req, res) => {
+  res.json(listImages());
+});
+
+// Delete image
+app.delete('/api/images/:filename', (req, res) => {
+  const filepath = path.join(UPLOADS_DIR, path.basename(req.params.filename));
+  if (!fs.existsSync(filepath)) return res.status(404).json({ error: 'not found' });
+  fs.unlinkSync(filepath);
+  gitSync();
+  res.json({ ok: true });
+});
+
 // Delete note
 app.delete('/api/notes/:slug', (req, res) => {
   const notes = loadNotes();
@@ -266,5 +313,4 @@ app.use((req, res) => res.status(404).render('404', { site: SITE_TITLE }));
 // ---- Start ----
 app.listen(PORT, () => {
   console.log(`Notes site: http://localhost:${PORT}`);
-  console.log(`Upload page: http://localhost:${PORT}${up}`);
 });
