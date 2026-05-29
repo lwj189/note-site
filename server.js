@@ -200,6 +200,16 @@ app.get('/note/:slug', (req, res) => {
   res.render('note', { note, html: renderContent(note), site: SITE_TITLE });
 });
 
+app.get('/new', (req, res) => {
+  res.render('editor', { site: SITE_TITLE });
+});
+
+app.get('/edit/:slug', (req, res) => {
+  const note = loadNotes().find(n => n.slug === req.params.slug);
+  if (!note) return res.status(404).render('404', { site: SITE_TITLE });
+  res.render('editor', { note, site: SITE_TITLE });
+});
+
 app.get('/list', (req, res) => {
   const notes = loadNotes();
   notes.sort((a, b) => a.title.localeCompare(b.title, 'zh'));
