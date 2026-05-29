@@ -1,0 +1,243 @@
+<%- include('header', { heading: typeof note !== 'undefined' ? '编辑: ' + note.title : '新建笔记' }) %>
+
+<div class="editor-page">
+  <div class="editor-toolbar">
+    <label class="toolbar-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      插入图片
+      <input type="file" id="tb-image-input" accept="image/*" hidden>
+    </label>
+    <label class="toolbar-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      插入文件
+      <input type="file" id="tb-file-input" accept=".txt,.cpp,.md,.h,.hpp,.c,.py,.js,.ts,.java,.cs,.go,.rs,.rb,.php,.html,.css,.json,.xml,.yaml,.yml,.sql,.sh,.bat,.ps1" hidden>
+    </label>
+    <span class="toolbar-sep"></span>
+    <button type="button" class="toolbar-btn" id="tb-preview-btn" onclick="togglePreview()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      预览
+    </button>
+    <div id="toolbar-msg" class="toolbar-msg"></div>
+  </div>
+
+  <form id="editor-form">
+    <div class="editor-meta">
+      <div class="editor-field">
+        <label>标题</label>
+        <input type="text" name="title" id="e-title" value="<%= typeof note !== 'undefined' ? note.title : '' %>" placeholder="笔记标题" required>
+      </div>
+      <div class="editor-field">
+        <label>网址路径</label>
+        <input type="text" name="slug" id="e-slug" value="<%= typeof note !== 'undefined' ? note.slug : '' %>" placeholder="note-url-path" required>
+      </div>
+      <div class="editor-field">
+        <label>类型</label>
+        <select name="type" id="e-type">
+          <% const selType = typeof note !== 'undefined' ? note.type : 'md'; %>
+          <option value="md" <%= selType === 'md' ? 'selected' : '' %>>Markdown (.md)</option>
+          <option value="txt" <%= selType === 'txt' ? 'selected' : '' %>>纯文本 (.txt)</option>
+          <option value="cpp" <%= selType === 'cpp' ? 'selected' : '' %>>C++ (.cpp)</option>
+          <option value="c" <%= selType === 'c' ? 'selected' : '' %>>C (.c)</option>
+          <option value="python" <%= selType === 'python' ? 'selected' : '' %>>Python (.py)</option>
+          <option value="javascript" <%= selType === 'javascript' ? 'selected' : '' %>>JavaScript (.js)</option>
+          <option value="typescript" <%= selType === 'typescript' ? 'selected' : '' %>>TypeScript (.ts)</option>
+          <option value="java" <%= selType === 'java' ? 'selected' : '' %>>Java (.java)</option>
+          <option value="go" <%= selType === 'go' ? 'selected' : '' %>>Go (.go)</option>
+          <option value="rust" <%= selType === 'rust' ? 'selected' : '' %>>Rust (.rs)</option>
+          <option value="csharp" <%= selType === 'csharp' ? 'selected' : '' %>>C# (.cs)</option>
+          <option value="sql" <%= selType === 'sql' ? 'selected' : '' %>>SQL (.sql)</option>
+          <option value="bash" <%= selType === 'bash' ? 'selected' : '' %>>Bash (.sh)</option>
+          <option value="json" <%= selType === 'json' ? 'selected' : '' %>>JSON (.json)</option>
+          <option value="xml" <%= selType === 'xml' ? 'selected' : '' %>>HTML/XML</option>
+          <option value="css" <%= selType === 'css' ? 'selected' : '' %>>CSS</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="editor-area">
+      <textarea name="content" id="e-content" placeholder="在此撰写内容...&#10;&#10;支持 Markdown 语法" required><%= typeof note !== 'undefined' ? note.content : '' %></textarea>
+      <div id="e-preview" class="editor-preview note-body" style="display:none"></div>
+    </div>
+
+    <div class="editor-actions">
+      <button type="submit" class="btn"><%= typeof note !== 'undefined' ? '保存笔记' : '发布笔记' %></button>
+      <% if (typeof note !== 'undefined') { %>
+      <a href="/note/<%= encodeURIComponent(note.slug) %>" class="btn btn-outline" target="_blank">查看笔记</a>
+      <% } %>
+      <a href="/" class="btn btn-outline">返回首页</a>
+    </div>
+    <div id="editor-result" class="result"></div>
+  </form>
+</div>
+
+<script>
+const LANG_MAP = {
+  '.cpp':'cpp','.c':'c','.h':'c','.hpp':'cpp',
+  '.py':'python','.js':'javascript','.ts':'typescript',
+  '.java':'java','.cs':'csharp','.go':'go','.rs':'rust',
+  '.rb':'ruby','.php':'php','.html':'xml','.css':'css',
+  '.json':'json','.xml':'xml','.yaml':'yaml','.yml':'yaml',
+  '.sql':'sql','.sh':'bash','.bat':'dos','.ps1':'powershell',
+  '.md':'md','.txt':'txt'
+};
+
+const textarea = document.getElementById('e-content');
+let previewVisible = false;
+
+function insertAtCursor(text) {
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const before = textarea.value.substring(0, start);
+  const after = textarea.value.substring(end);
+  textarea.value = before + text + after;
+  textarea.selectionStart = textarea.selectionEnd = start + text.length;
+  textarea.focus();
+}
+
+function showMsg(msg, isErr) {
+  const el = document.getElementById('toolbar-msg');
+  el.textContent = msg;
+  el.className = 'toolbar-msg ' + (isErr ? 'error' : 'success');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.className = 'toolbar-msg', 3000);
+}
+
+// Insert image
+document.getElementById('tb-image-input').addEventListener('change', async function() {
+  const file = this.files[0];
+  if (!file) return;
+  showMsg('上传图片中...');
+  try {
+    const fd = new FormData();
+    fd.append('image', file);
+    fd.append('alt', file.name);
+    const res = await fetch('/api/upload-image', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.ok) {
+      insertAtCursor(data.md + '\n');
+      showMsg('图片已插入');
+    } else {
+      showMsg(data.error, true);
+    }
+  } catch (err) {
+    showMsg('上传失败：' + err.message, true);
+  }
+  this.value = '';
+});
+
+// Insert file content
+document.getElementById('tb-file-input').addEventListener('change', function() {
+  const file = this.files[0];
+  if (!file) return;
+  showMsg('读取文件中...');
+  const reader = new FileReader();
+  reader.onload = function() {
+    const content = reader.result;
+    const ext = '.' + file.name.split('.').pop().toLowerCase();
+    const lang = LANG_MAP[ext] || '';
+    let text;
+    if (lang && lang !== 'md' && lang !== 'txt') {
+      text = '```' + lang + '\n' + content + '\n```\n';
+    } else if (lang === 'md') {
+      text = content + '\n';
+    } else {
+      text = '```\n' + content + '\n```\n';
+    }
+    insertAtCursor(text);
+    showMsg('文件内容已插入');
+  };
+  reader.onerror = function() {
+    showMsg('读取文件失败', true);
+  };
+  reader.readAsText(file);
+  this.value = '';
+});
+
+// Preview toggle
+async function togglePreview() {
+  previewVisible = !previewVisible;
+  const preview = document.getElementById('e-preview');
+  const btn = document.getElementById('tb-preview-btn');
+  if (previewVisible) {
+    btn.classList.add('active');
+    textarea.style.display = 'none';
+    preview.style.display = 'block';
+    // Render markdown server-side
+    try {
+      const res = await fetch('/api/notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: 'preview',
+          slug: '__preview__',
+          content: textarea.value,
+          type: 'md'
+        })
+      });
+      // We just want to render, not save. Use a temp approach.
+    } catch(e) {}
+    // Use a simple client-side markdown-like rendering for preview
+    preview.innerHTML = textarea.value
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+      .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+      .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/\n/g, '<br>');
+    preview.innerHTML = '<p>' + preview.innerHTML + '</p>';
+  } else {
+    btn.classList.remove('active');
+    textarea.style.display = '';
+    preview.style.display = 'none';
+  }
+}
+
+// Form submit
+document.getElementById('editor-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const r = document.getElementById('editor-result');
+  r.className = 'result';
+  r.textContent = '保存中...';
+  try {
+    const res = await fetch('/api/notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: document.getElementById('e-title').value,
+        slug: document.getElementById('e-slug').value,
+        content: document.getElementById('e-content').value,
+        type: document.getElementById('e-type').value
+      })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      r.className = 'result success';
+      r.innerHTML = '已保存！<a href="/note/' + encodeURIComponent(data.slug) + '">查看</a>';
+      // Update slug field in case it was auto-generated
+      document.getElementById('e-slug').value = data.slug;
+    } else {
+      r.className = 'result error';
+      r.textContent = data.error;
+    }
+  } catch (err) {
+    r.className = 'result error';
+    r.textContent = '保存失败：' + err.message;
+  }
+});
+
+// Ctrl+S to save
+document.addEventListener('keydown', function(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    document.getElementById('editor-form').dispatchEvent(new Event('submit'));
+  }
+});
+</script>
+
+<%- include('footer') %>
