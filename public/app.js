@@ -23,3 +23,25 @@
     list.innerHTML = '<div class="sidebar-recent-loading">加载失败</div>';
   }
 })();
+
+// Card delete
+async function delNoteCard(btn, slug) {
+  if (!confirm('确定删除笔记 "' + slug + '" 吗？此操作不可恢复。')) return;
+  try {
+    const res = await fetch('/api/notes/' + encodeURIComponent(slug), { method: 'DELETE' });
+    const data = await res.json();
+    if (data.ok) {
+      const card = btn.closest('[data-slug]');
+      if (card) {
+        card.style.opacity = '0';
+        card.style.transform = 'scale(0.95)';
+        card.style.transition = 'all .2s';
+        setTimeout(() => card.remove(), 200);
+      }
+    } else {
+      alert('删除失败：' + data.error);
+    }
+  } catch (err) {
+    alert('删除失败：' + err.message);
+  }
+}
