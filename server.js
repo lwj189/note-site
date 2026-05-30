@@ -15,6 +15,7 @@ const GIT_REPO = process.env.GIT_REPO || 'github.com/lwj189/note-site.git';
 const GIT_USER = process.env.GIT_USER || 'lwj189';
 const DATA_DIR = path.join(__dirname, 'data');
 const NOTES_FILE = path.join(DATA_DIR, 'notes.json');
+const NOTEBOOKS_FILE = path.join(DATA_DIR, 'notebooks.json');
 const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
 
 [DATA_DIR, UPLOADS_DIR].forEach(dir => {
@@ -31,6 +32,24 @@ function loadNotes() {
 
 function saveNotes(notes) {
   fs.writeFileSync(NOTES_FILE, JSON.stringify(notes, null, 2));
+}
+
+function loadNotebooks() {
+  try {
+    if (!fs.existsSync(NOTEBOOKS_FILE)) return [];
+    return JSON.parse(fs.readFileSync(NOTEBOOKS_FILE, 'utf-8'));
+  } catch { return []; }
+}
+
+function saveNotebooks(notebooks) {
+  fs.writeFileSync(NOTEBOOKS_FILE, JSON.stringify(notebooks, null, 2));
+}
+
+function highlightKeyword(text, keyword) {
+  if (!keyword || !text) return esc(text);
+  const escaped = esc(text);
+  const kw = esc(keyword).replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+  return escaped.replace(new RegExp('(' + kw + ')', 'gi'), '<mark>$1</mark>');
 }
 
 // ---- Git auto-sync ----
@@ -182,16 +201,51 @@ app.get('/', (req, res) => {
 
 app.get('/search', (req, res) => {
   const q = (req.query.q || '').toLowerCase().trim();
+  const timeFilter = req.query.time || '';
+  const dateFrom = req.query.from || '';
+  const dateTo = req.query.to || '';
   let notes = loadNotes();
-  if (q) {
-    notes = notes.filter(n =>
-      n.title.toLowerCase().includes(q) ||
-      n.content.toLowerCase().includes(q) ||
-      n.slug.toLowerCase().includes(q)
-    );
+
+  // Time filter
+  if (timeFilter || (dateFrom && dateTo)) {
+    let from = 0;
+    const to = Date.now();
+    if (dateFrom) { from = new Date(dateFrom).getTime(); }
+    else if (timeFilter === 'today') {
+      const d = new Date(); d.setHours(0,0,0,0); from = d.getTime();
+    } else if (timeFilter === 'week') {
+      from = Date.now() - 7 * 24 * 3600 * 1000;
+    } else if (timeFilter === 'month') {
+      from = Date.now() - 30 * 24 * 3600 * 1000;
+    }
+    notes = notes.filter(n => {
+      const t = new Date(n.updatedAt).getTime();
+      return t >= from && t <= to;
+    });
   }
-  notes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-  res.render('search', { notes, site: SITE_TITLE, current: 'search', query: q });
+
+  // Search
+  let titleMatches = [], contentMatches = [];
+  if (q) {
+    notes.forEach(n => {
+      if (n.title.toLowerCase().includes(q)) {
+        titleMatches.push(n);
+      } else if (n.content.toLowerCase().includes(q) || n.slug.toLowerCase().includes(q)) {
+        contentMatches.push(n);
+      }
+    });
+  } else {
+    titleMatches = notes;
+  }
+
+  titleMatches.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  contentMatches.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+
+  res.render('search', {
+    notes, site: SITE_TITLE, current: 'search', query: q,
+    titleMatches, contentMatches, timeFilter, dateFrom, dateTo,
+    highlightKeyword
+  });
 });
 
 app.get('/note/:slug', (req, res) => {
@@ -220,11 +274,20 @@ app.get('/gallery', (req, res) => {
   res.render('gallery', { images: listImages(), site: SITE_TITLE, current: 'gallery' });
 });
 
+app.get('/notebook/:name', (req, res) => {
+  const name = req.params.name;
+  const notes = loadNotes().filter(n => n.tags && n.tags.includes(name));
+  notes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  res.render('notebook', { notes, notebook: name, site: SITE_TITLE, current: 'notebook' });
+});
+
 // Create / update note from form
 app.post('/api/notes', (req, res) => {
-  const { title, slug, content, type } = req.body;
+  const { title, slug, content, type, tags } = req.body;
   if (!title || !slug || !content) return res.status(400).json({ error: '标题、网址和内容不能为空' });
   if (!validSlug(slug)) return res.status(400).json({ error: '网址格式不合法' });
+
+  const parsedTags = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [];
 
   const notes = loadNotes();
   const existing = notes.find(n => n.slug === slug);
@@ -233,9 +296,10 @@ app.post('/api/notes', (req, res) => {
     existing.title = title;
     existing.content = content;
     existing.type = type || 'md';
+    existing.tags = parsedTags;
     existing.updatedAt = now;
   } else {
-    notes.push({ id: crypto.randomBytes(8).toString('hex'), slug, title, content, type: type || 'md', createdAt: now, updatedAt: now });
+    notes.push({ id: crypto.randomBytes(8).toString('hex'), slug, title, content, type: type || 'md', tags: parsedTags, createdAt: now, updatedAt: now });
   }
   saveNotes(notes);
   gitSync();
@@ -328,7 +392,38 @@ app.delete('/api/notes/:slug', (req, res) => {
 
 // JSON API
 app.get('/api/notes', (req, res) => {
-  res.json(loadNotes().map(n => ({ slug: n.slug, title: n.title, type: n.type, updatedAt: n.updatedAt })));
+  res.json(loadNotes().map(n => ({ slug: n.slug, title: n.title, type: n.type, tags: n.tags || [], updatedAt: n.updatedAt })));
+});
+
+// Notebook APIs
+app.get('/api/notebooks', (req, res) => {
+  const notebooks = loadNotebooks();
+  const notes = loadNotes();
+  // Return notebooks with note counts
+  const result = notebooks.map(name => ({
+    name,
+    count: notes.filter(n => n.tags && n.tags.includes(name)).length
+  }));
+  res.json(result);
+});
+
+app.post('/api/notebooks', (req, res) => {
+  const { name } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ error: '名称不能为空' });
+  const notebooks = loadNotebooks();
+  if (notebooks.includes(name.trim())) return res.status(400).json({ error: '笔记本已存在' });
+  notebooks.push(name.trim());
+  saveNotebooks(notebooks);
+  res.json({ ok: true, name: name.trim() });
+});
+
+app.delete('/api/notebooks/:name', (req, res) => {
+  const notebooks = loadNotebooks();
+  const idx = notebooks.indexOf(req.params.name);
+  if (idx === -1) return res.status(404).json({ error: 'not found' });
+  notebooks.splice(idx, 1);
+  saveNotebooks(notebooks);
+  res.json({ ok: true });
 });
 
 // Render markdown preview

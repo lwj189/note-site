@@ -5,6 +5,13 @@
     <div class="note-header-left">
       <h1><%= note.title %></h1>
       <div class="date">更新于 <%= new Date(note.updatedAt).toLocaleString('zh-CN') %> &middot; 类型：<%= note.type %></div>
+      <% if (note.tags && note.tags.length) { %>
+      <div class="tag-list" style="margin-top:8px">
+        <% note.tags.forEach(t => { %>
+        <a href="/notebook/<%= encodeURIComponent(t) %>" class="tag-badge tag-badge-lg"><%= t %></a>
+        <% }) %>
+      </div>
+      <% } %>
     </div>
     <div class="note-header-actions">
       <a href="/edit/<%= encodeURIComponent(note.slug) %>" class="card-action-btn card-edit" title="编辑">

@@ -24,6 +24,46 @@
   }
 })();
 
+// Sidebar: load notebooks
+(async function() {
+  const list = document.getElementById('sidebar-notebook-list');
+  if (!list) return;
+
+  try {
+    const res = await fetch('/api/notebooks');
+    const notebooks = await res.json();
+    if (!notebooks.length) {
+      list.innerHTML = '<div class="sidebar-recent-loading">暂无笔记本</div>';
+      return;
+    }
+    list.innerHTML = notebooks.map(nb =>
+      '<a href="/notebook/' + encodeURIComponent(nb.name) + '" class="sidebar-notebook-item">' +
+        '<span class="notebook-name">' + nb.name.replace(/</g, '&lt;') + '</span>' +
+        '<span class="notebook-count">' + nb.count + '</span>' +
+      '</a>'
+    ).join('');
+  } catch (err) {
+    list.innerHTML = '<div class="sidebar-recent-loading">加载失败</div>';
+  }
+})();
+
+// New notebook dialog
+function showNewNotebook() {
+  const name = prompt('输入新笔记本名称：');
+  if (!name || !name.trim()) return;
+  fetch('/api/notebooks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: name.trim() })
+  }).then(r => r.json()).then(data => {
+    if (data.ok) {
+      window.location.reload();
+    } else {
+      alert(data.error);
+    }
+  }).catch(err => alert('创建失败：' + err.message));
+}
+
 // Card delete
 async function delNoteCard(btn, slug) {
   if (!confirm('确定删除笔记 "' + slug + '" 吗？此操作不可恢复。')) return;

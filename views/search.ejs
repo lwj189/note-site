@@ -3,24 +3,132 @@
 <div class="search-header">
   <h1>搜索结果</h1>
   <% if (query) { %>
-  <p>搜索 "<strong><%= query %></strong>" 找到 <%= notes.length %> 篇笔记</p>
+  <p>搜索 "<strong><%= query %></strong>"：
+    <% if (typeof titleMatches !== 'undefined') { %>
+    标题匹配 <strong><%= titleMatches.length %></strong> 篇，内容匹配 <strong><%= contentMatches.length %></strong> 篇
+    <% } else { %>
+    找到 <strong><%= notes.length %></strong> 篇笔记
+    <% } %>
+  </p>
+  <% } else if (typeof timeFilter !== 'undefined' && timeFilter) { %>
+  <p>时间筛选结果：<strong><%= notes.length %></strong> 篇笔记</p>
   <% } else { %>
-  <p>输入关键词搜索笔记标题和内容。</p>
+  <p>输入关键词搜索笔记标题和内容，或使用时间筛选浏览笔记。</p>
   <% } %>
 </div>
 
-<% if (query && notes.length === 0) { %>
-<div class="empty"><p>没有找到匹配的笔记。</p></div>
-<% } else if (notes.length > 0) { %>
-<div class="note-list">
-  <% notes.forEach(n => { %>
-  <a href="/note/<%= encodeURIComponent(n.slug) %>" class="note-card">
-    <h3><%= n.title %> <span class="badge"><%= n.type %></span></h3>
-    <div class="meta"><%= new Date(n.updatedAt).toLocaleDateString('zh-CN') %></div>
-    <div class="preview"><%= n.content.replace(/[#*`\[\]!>]/g, '').substring(0, 120) %></div>
-  </a>
-  <% }) %>
+<!-- Time filter -->
+<div class="search-filters">
+  <form class="search-filter-form" action="/search" method="get" id="search-filter-form">
+    <input type="hidden" name="q" value="<%= query %>">
+    <label class="filter-label">时间范围：</label>
+    <select name="time" onchange="handleTimeFilter(this.value)">
+      <option value="">任意时间</option>
+      <option value="today" <%= timeFilter === 'today' ? 'selected' : '' %>>今天</option>
+      <option value="week" <%= timeFilter === 'week' ? 'selected' : '' %>>最近 7 天</option>
+      <option value="month" <%= timeFilter === 'month' ? 'selected' : '' %>>最近 30 天</option>
+      <option value="custom" <%= dateFrom ? 'selected' : '' %>>自定义</option>
+    </select>
+    <span id="custom-dates" style="<%= dateFrom ? '' : 'display:none' %>">
+      <input type="datetime-local" name="from" value="<%= dateFrom %>" style="margin-left:8px;padding:4px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:.85rem;font-family:inherit">
+      <span style="margin:0 4px;color:var(--muted)">至</span>
+      <input type="datetime-local" name="to" value="<%= dateTo %>" style="padding:4px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:.85rem;font-family:inherit">
+    </span>
+    <button type="submit" class="btn btn-sm" style="margin-left:12px;margin-top:0">筛选</button>
+  </form>
 </div>
+
+<% if (query && typeof titleMatches !== 'undefined') { %>
+  <% if (titleMatches.length === 0 && contentMatches.length === 0) { %>
+  <div class="empty"><p>没有找到匹配的笔记。</p></div>
+  <% } else { %>
+    <% if (titleMatches.length > 0) { %>
+    <div class="search-section">
+      <h2 class="search-section-title">标题匹配 (<%= titleMatches.length %>)</h2>
+      <div class="note-list">
+        <% titleMatches.forEach(n => { %>
+        <div class="note-card" data-slug="<%= n.slug %>">
+          <a href="/note/<%= encodeURIComponent(n.slug) %>" class="note-card-link">
+            <h3><%- highlightKeyword(n.title, query) %></h3>
+            <div class="meta"><%= new Date(n.updatedAt).toLocaleString('zh-CN') %> &middot; /note/<%= n.slug %></div>
+          </a>
+          <div class="card-actions card-actions-inline">
+            <a href="/edit/<%= encodeURIComponent(n.slug) %>" class="card-action-btn card-edit" title="编辑" onclick="event.stopPropagation()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </a>
+            <button class="card-action-btn card-del" title="删除" onclick="event.stopPropagation(); delNoteCard(this, '<%= n.slug %>')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+          </div>
+        </div>
+        <% }) %>
+      </div>
+    </div>
+    <% } %>
+
+    <% if (contentMatches.length > 0) { %>
+    <div class="search-section">
+      <h2 class="search-section-title">内容匹配 (<%= contentMatches.length %>)</h2>
+      <div class="note-list">
+        <% contentMatches.forEach(n => { %>
+        <div class="note-card" data-slug="<%= n.slug %>">
+          <a href="/note/<%= encodeURIComponent(n.slug) %>" class="note-card-link">
+            <h3><%= n.title %> <span class="badge"><%= n.type %></span></h3>
+            <div class="meta"><%= new Date(n.updatedAt).toLocaleString('zh-CN') %></div>
+            <div class="preview"><%- highlightKeyword(n.content.replace(/[#*`\[\]!>]/g, '').substring(0, 150), query) %></div>
+          </a>
+          <div class="card-actions card-actions-inline">
+            <a href="/edit/<%= encodeURIComponent(n.slug) %>" class="card-action-btn card-edit" title="编辑" onclick="event.stopPropagation()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </a>
+            <button class="card-action-btn card-del" title="删除" onclick="event.stopPropagation(); delNoteCard(this, '<%= n.slug %>')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+          </div>
+        </div>
+        <% }) %>
+      </div>
+    </div>
+    <% } %>
+  <% } %>
+<% } else if (typeof timeFilter !== 'undefined' || notes.length > 0) { %>
+  <% if (notes.length === 0) { %>
+  <div class="empty"><p>该时间范围内没有笔记。</p></div>
+  <% } else { %>
+  <div class="note-list">
+    <% notes.forEach(n => { %>
+    <div class="note-card" data-slug="<%= n.slug %>">
+      <a href="/note/<%= encodeURIComponent(n.slug) %>" class="note-card-link">
+        <h3><%= n.title %> <span class="badge"><%= n.type %></span></h3>
+        <div class="meta"><%= new Date(n.updatedAt).toLocaleString('zh-CN') %></div>
+      </a>
+      <div class="card-actions card-actions-inline">
+        <a href="/edit/<%= encodeURIComponent(n.slug) %>" class="card-action-btn card-edit" title="编辑" onclick="event.stopPropagation()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </a>
+        <button class="card-action-btn card-del" title="删除" onclick="event.stopPropagation(); delNoteCard(this, '<%= n.slug %>')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+      </div>
+    </div>
+    <% }) %>
+  </div>
+  <% } %>
 <% } %>
+
+<script>
+function handleTimeFilter(val) {
+  var custom = document.getElementById('custom-dates');
+  if (val === 'custom') {
+    custom.style.display = 'inline';
+  } else if (val) {
+    custom.style.display = 'none';
+    document.getElementById('search-filter-form').submit();
+  } else {
+    custom.style.display = 'none';
+    document.getElementById('search-filter-form').submit();
+  }
+}
+</script>
 
 <%- include('footer') %>

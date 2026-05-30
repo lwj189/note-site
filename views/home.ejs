@@ -23,6 +23,13 @@
       <a href="/note/<%= encodeURIComponent(n.slug) %>" class="home-recent-card-link">
         <h3><%= n.title %> <span class="badge"><%= n.type %></span></h3>
         <div class="meta"><%= new Date(n.updatedAt).toLocaleDateString('zh-CN') %></div>
+        <% if (n.tags && n.tags.length) { %>
+        <div class="tag-list">
+          <% n.tags.forEach(t => { %>
+          <a href="/notebook/<%= encodeURIComponent(t) %>" class="tag-badge" onclick="event.stopPropagation()"><%= t %></a>
+          <% }) %>
+        </div>
+        <% } %>
         <div class="preview"><%= n.content.replace(/[#*`\[\]!>]/g, '').substring(0, 100) %></div>
       </a>
     </div>
