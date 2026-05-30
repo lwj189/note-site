@@ -1051,6 +1051,57 @@ pre.plain {
   overflow-y: auto;
 }
 .editor-preview img { max-width: 100%; border-radius: 6px; }
+
+/* Resizable images in editor preview */
+.editor-preview .img-resizable {
+  resize: horizontal;
+  overflow: auto;
+  cursor: ew-resize;
+  border: 2px dashed transparent;
+  border-radius: 6px;
+  transition: border-color .15s;
+}
+.editor-preview .img-resizable:hover { border-color: var(--accent); }
+.editor-preview .img-resizable::after {
+  content: '';
+  position: absolute;
+  right: 0; bottom: 0;
+  width: 10px; height: 10px;
+  background: var(--accent);
+  border-radius: 0 0 4px 0;
+  opacity: 0;
+  transition: opacity .15s;
+}
+.editor-preview .img-resizable:hover::after { opacity: 0.8; }
+
+/* Image lightbox (read-only view) */
+.img-lightbox {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.85);
+  z-index: 300;
+  align-items: center; justify-content: center;
+  padding: 40px;
+  cursor: zoom-out;
+}
+.img-lightbox.active { display: flex; }
+.img-lightbox img {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 8px;
+}
+.img-lightbox-close {
+  position: absolute;
+  top: 16px; right: 24px;
+  font-size: 2rem;
+  color: #fff;
+  cursor: pointer;
+  z-index: 1;
+  opacity: 0.7;
+}
+.img-lightbox-close:hover { opacity: 1; }
+
 .preview-loading, .preview-empty {
   display: flex;
   align-items: center;

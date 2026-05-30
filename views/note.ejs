@@ -33,6 +33,28 @@
 
 <a href="/" class="back">&larr; 返回首页</a>
 
+<!-- Image lightbox -->
+<div id="img-lightbox" class="img-lightbox" onclick="closeImgLightbox()">
+  <span class="img-lightbox-close">&times;</span>
+  <img id="img-lightbox-img" src="" alt="">
+</div>
+
+<script>
+// Image click-to-view
+(function() {
+  document.querySelectorAll('.note-body img').forEach(function(img) {
+    img.style.cursor = 'zoom-in';
+    img.addEventListener('click', function() {
+      document.getElementById('img-lightbox-img').src = this.src;
+      document.getElementById('img-lightbox').classList.add('active');
+    });
+  });
+})();
+function closeImgLightbox() {
+  document.getElementById('img-lightbox').classList.remove('active');
+}
+</script>
+
 <script>
 async function delNote(slug) {
   if (!confirm('确定删除笔记 "' + slug + '" 吗？此操作不可恢复。')) return;
