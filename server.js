@@ -331,6 +331,18 @@ app.get('/api/notes', (req, res) => {
   res.json(loadNotes().map(n => ({ slug: n.slug, title: n.title, type: n.type, updatedAt: n.updatedAt })));
 });
 
+// Render markdown preview
+app.post('/api/render', (req, res) => {
+  const { content, type } = req.body;
+  if (!content) return res.json({ html: '' });
+  try {
+    const html = renderContent({ content, type: type || 'md' });
+    res.json({ html });
+  } catch (err) {
+    res.status(500).json({ error: '渲染失败' });
+  }
+});
+
 // 404
 app.use((req, res) => res.status(404).render('404', { site: SITE_TITLE, current: '404' }));
 

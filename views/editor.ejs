@@ -243,6 +243,7 @@ function insertSelectedImages() {
   });
   insertAtCursor(text);
   closeImagePicker();
+  setTimeout(showPreviewAfterInsert, 150);
 }
 
 function switchPickerTab(name, btn) {
@@ -273,6 +274,7 @@ document.getElementById('picker-image-input').addEventListener('change', async f
       if (data.ok) {
         insertAtCursor(data.md + '\n');
         inserted++;
+        setTimeout(showPreviewAfterInsert, 150);
       }
     }
     if (inserted > 0) {
@@ -342,6 +344,31 @@ async function insertDocxFile(file) {
 }
 
 // ---- Preview ----
+async function renderPreview() {
+  const preview = document.getElementById('e-preview');
+  const content = textarea.value;
+  if (!content.trim()) {
+    preview.innerHTML = '<div class="preview-empty">暂无内容</div>';
+    return;
+  }
+  preview.innerHTML = '<div class="preview-loading">渲染中...</div>';
+  try {
+    const res = await fetch('/api/render', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content, type: document.getElementById('e-type').value })
+    });
+    const data = await res.json();
+    if (data.html) {
+      preview.innerHTML = data.html;
+    } else {
+      preview.innerHTML = '<div class="preview-empty">渲染失败</div>';
+    }
+  } catch (err) {
+    preview.innerHTML = '<div class="preview-empty">渲染失败：' + err.message + '</div>';
+  }
+}
+
 async function togglePreview() {
   previewVisible = !previewVisible;
   const preview = document.getElementById('e-preview');
@@ -350,25 +377,25 @@ async function togglePreview() {
     btn.classList.add('active');
     textarea.style.display = 'none';
     preview.style.display = 'block';
-    preview.innerHTML = textarea.value
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-      .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-      .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
-      .replace(/`([^`]+)`/g, '<code>$1</code>')
-      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">')
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
-      .replace(/\n\n/g, '</p><p>')
-      .replace(/\n/g, '<br>');
-    preview.innerHTML = '<p>' + preview.innerHTML + '</p>';
+    await renderPreview();
   } else {
     btn.classList.remove('active');
     textarea.style.display = '';
     preview.style.display = 'none';
   }
+}
+
+// Auto-preview after inserting image
+function showPreviewAfterInsert() {
+  if (!previewVisible) {
+    previewVisible = true;
+    const preview = document.getElementById('e-preview');
+    const btn = document.getElementById('tb-preview-btn');
+    btn.classList.add('active');
+    textarea.style.display = 'none';
+    preview.style.display = 'block';
+  }
+  renderPreview();
 }
 
 // ---- Form Submit ----
