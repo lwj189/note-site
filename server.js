@@ -454,7 +454,7 @@ app.get('/api/next-name', (req, res) => {
 });
 
 app.put('/api/notebooks/:name', (req, res) => {
-  const { newName } = req.body;
+  const { newName, addNotes } = req.body;
   if (!newName || !newName.trim()) return res.status(400).json({ error: '名称不能为空' });
   const notebooks = loadNotebooks();
   const idx = notebooks.indexOf(req.params.name);
@@ -462,16 +462,27 @@ app.put('/api/notebooks/:name', (req, res) => {
   if (notebooks.includes(newName.trim()) && newName.trim() !== req.params.name) {
     return res.status(400).json({ error: '笔记本已存在' });
   }
-  // Rename tag in all notes
   const notes = loadNotes();
+  // Rename tag in all notes
   notes.forEach(n => {
     if (n.tags && n.tags.includes(req.params.name)) {
       n.tags = n.tags.map(t => t === req.params.name ? newName.trim() : t);
     }
   });
+  // Add selected notes to notebook
+  if (addNotes && addNotes.length) {
+    addNotes.forEach(slug => {
+      const n = notes.find(x => x.slug === slug);
+      if (n) {
+        if (!n.tags) n.tags = [];
+        if (!n.tags.includes(newName.trim())) n.tags.push(newName.trim());
+      }
+    });
+  }
   saveNotes(notes);
   notebooks[idx] = newName.trim();
   saveNotebooks(notebooks);
+  gitSync();
   res.json({ ok: true, name: newName.trim() });
 });
 
