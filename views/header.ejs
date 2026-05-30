@@ -8,15 +8,45 @@
   <link rel="stylesheet" href="/hljs-theme.css">
 </head>
 <body>
-<nav>
-  <div class="nav-inner">
-    <a href="/" class="nav-title"><%= site %></a>
-    <div class="nav-links">
-      <a href="/">首页</a>
-      <a href="/list">全部笔记</a>
-      <a href="/gallery">图库</a>
-      <a href="/search">搜索</a>
+<div class="app-layout">
+<aside class="sidebar">
+  <a href="/" class="sidebar-logo">
+    <span class="logo-icon">✦</span>
+    <span class="logo-text">MyNote</span>
+  </a>
+
+  <form class="sidebar-search" action="/search" method="get">
+    <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" name="q" placeholder="搜索笔记..." value="<%= typeof query !== 'undefined' ? query : '' %>">
+  </form>
+
+  <nav class="sidebar-nav">
+    <a href="/" class="nav-card nav-home<%= typeof current !== 'undefined' && current === 'home' ? ' active' : '' %>">
+      <span class="nav-card-icon">🏠</span>
+      <span class="nav-card-label">首页</span>
+      <span class="nav-card-arrow">→</span>
+    </a>
+    <a href="/list" class="nav-card nav-list<%= typeof current !== 'undefined' && current === 'list' ? ' active' : '' %>">
+      <span class="nav-card-icon">📋</span>
+      <span class="nav-card-label">全部笔记</span>
+      <span class="nav-card-arrow">→</span>
+    </a>
+    <a href="/gallery" class="nav-card nav-gallery<%= typeof current !== 'undefined' && current === 'gallery' ? ' active' : '' %>">
+      <span class="nav-card-icon">🖼️</span>
+      <span class="nav-card-label">图库</span>
+      <span class="nav-card-arrow">→</span>
+    </a>
+  </nav>
+
+  <a href="/new" class="sidebar-new-btn">+ 新建笔记</a>
+
+  <div class="sidebar-recent">
+    <div class="sidebar-recent-title">最近笔记</div>
+    <div id="sidebar-recent-list" class="sidebar-recent-list">
+      <div class="sidebar-recent-loading">加载中...</div>
     </div>
   </div>
-</nav>
+
+  <div class="sidebar-footer">&copy; 2026 MyNote</div>
+</aside>
 <main>

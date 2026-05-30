@@ -1,4 +1,4 @@
-<%- include('header', { heading: '图库' }) %>
+<%- include('header', { heading: '图库', current: typeof current !== 'undefined' ? current : 'gallery' }) %>
 
 <div class="gallery-toolbar">
   <span class="gallery-count">共 <strong><%= images.length %></strong> 张图片</span>
