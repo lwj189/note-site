@@ -2,14 +2,14 @@ const express = require('express');
 const multer = require('multer');
 const { marked } = require('marked');
 const hljs = require('highlight.js');
+const mammoth = require('mammoth');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 
 // ---- Config ----
-const UPLOAD_SECRET = process.env.UPLOAD_SECRET || 'changeme123';
 const PORT = process.env.PORT || 3000;
-const SITE_TITLE = process.env.SITE_TITLE || 'My Notes';
+const SITE_TITLE = process.env.SITE_TITLE || 'MyNote';
 const GIT_TOKEN = process.env.GIT_TOKEN || '';
 const GIT_REPO = process.env.GIT_REPO || 'github.com/lwj189/note-site.git';
 const GIT_USER = process.env.GIT_USER || 'lwj189';
@@ -102,7 +102,7 @@ const fileUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter(req, file, cb) {
-    const allowed = ['.txt', '.cpp', '.md', '.h', '.hpp', '.c', '.py', '.js', '.ts', '.java', '.cs', '.go', '.rs', '.rb', '.php', '.html', '.css', '.json', '.xml', '.yaml', '.yml', '.sql', '.sh', '.bat', '.ps1'];
+    const allowed = ['.txt', '.cpp', '.md', '.h', '.hpp', '.c', '.py', '.js', '.ts', '.java', '.cs', '.go', '.rs', '.rb', '.php', '.html', '.css', '.json', '.xml', '.yaml', '.yml', '.sql', '.sh', '.bat', '.ps1', '.docx'];
     cb(null, allowed.includes(path.extname(file.originalname).toLowerCase()));
   }
 });
@@ -177,7 +177,7 @@ app.get('/', (req, res) => {
   const notes = loadNotes();
   notes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
   const editNote = editSlug ? notes.find(n => n.slug === editSlug) : null;
-  res.render('home', { notes, site: SITE_TITLE, query: '', editNote });
+  res.render('home', { notes, site: SITE_TITLE, current: 'home', query: '', editNote });
 });
 
 app.get('/search', (req, res) => {
@@ -191,41 +191,33 @@ app.get('/search', (req, res) => {
     );
   }
   notes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-  res.render('search', { notes, site: SITE_TITLE, query: q });
+  res.render('search', { notes, site: SITE_TITLE, current: 'search', query: q });
 });
 
 app.get('/note/:slug', (req, res) => {
   const note = loadNotes().find(n => n.slug === req.params.slug);
   if (!note) return res.status(404).render('404', { site: SITE_TITLE });
-  res.render('note', { note, html: renderContent(note), site: SITE_TITLE });
+  res.render('note', { note, html: renderContent(note), site: SITE_TITLE, current: 'note' });
 });
 
 app.get('/new', (req, res) => {
-  res.render('editor', { site: SITE_TITLE });
+  res.render('editor', { site: SITE_TITLE, current: 'editor' });
 });
 
 app.get('/edit/:slug', (req, res) => {
   const note = loadNotes().find(n => n.slug === req.params.slug);
   if (!note) return res.status(404).render('404', { site: SITE_TITLE });
-  res.render('editor', { note, site: SITE_TITLE });
+  res.render('editor', { note, site: SITE_TITLE, current: 'editor' });
 });
 
 app.get('/list', (req, res) => {
   const notes = loadNotes();
   notes.sort((a, b) => a.title.localeCompare(b.title, 'zh'));
-  res.render('list', { notes, site: SITE_TITLE });
+  res.render('list', { notes, site: SITE_TITLE, current: 'list' });
 });
 
 app.get('/gallery', (req, res) => {
-  res.render('gallery', { images: listImages(), site: SITE_TITLE });
-});
-
-// ---- Secret upload route (redirects to home) ----
-const up = '/upload-' + UPLOAD_SECRET;
-
-app.get(up, (req, res) => {
-  const qs = req.query.edit ? '?edit=' + encodeURIComponent(req.query.edit) : '';
-  res.redirect('/' + qs);
+  res.render('gallery', { images: listImages(), site: SITE_TITLE, current: 'gallery' });
 });
 
 // Create / update note from form
@@ -256,22 +248,44 @@ app.post('/api/upload-file', fileUpload.single('file'), (req, res) => {
 
   const ext = path.extname(req.file.originalname).toLowerCase();
   const name = path.basename(req.file.originalname, ext);
-  const content = req.file.buffer.toString('utf-8');
   const slug = req.body.slug || name.replace(/[^\w一-鿿]/g, '-').replace(/-+/g, '-');
   const title = req.body.title || name;
   const type = LANG_MAP[ext] || 'txt';
 
-  const notes = loadNotes();
-  const existing = notes.find(n => n.slug === slug);
-  const now = new Date().toISOString();
-  if (existing) {
-    existing.title = title; existing.content = content; existing.type = type; existing.updatedAt = now;
+  const done = (content) => {
+    const notes = loadNotes();
+    const existing = notes.find(n => n.slug === slug);
+    const now = new Date().toISOString();
+    if (existing) {
+      existing.title = title; existing.content = content; existing.type = type; existing.updatedAt = now;
+    } else {
+      notes.push({ id: crypto.randomBytes(8).toString('hex'), slug, title, content, type, createdAt: now, updatedAt: now });
+    }
+    saveNotes(notes);
+    gitSync();
+    res.json({ ok: true, slug, title });
+  };
+
+  if (ext === '.docx') {
+    mammoth.extractRawText({ buffer: req.file.buffer })
+      .then(result => done(result.value))
+      .catch(() => done(''));
   } else {
-    notes.push({ id: crypto.randomBytes(8).toString('hex'), slug, title, content, type, createdAt: now, updatedAt: now });
+    done(req.file.buffer.toString('utf-8'));
   }
-  saveNotes(notes);
-  gitSync();
-  res.json({ ok: true, slug, title });
+});
+
+// Parse .docx file for editor insertion
+const docxUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }
+});
+
+app.post('/api/parse-docx', docxUpload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: '请选择文件' });
+  mammoth.extractRawText({ buffer: req.file.buffer })
+    .then(result => res.json({ ok: true, text: result.value }))
+    .catch(() => res.status(500).json({ error: '无法解析 .docx 文件' }));
 });
 app.post('/api/upload-image', imageUpload.single('image'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: '请选择图片' });
@@ -318,7 +332,7 @@ app.get('/api/notes', (req, res) => {
 });
 
 // 404
-app.use((req, res) => res.status(404).render('404', { site: SITE_TITLE }));
+app.use((req, res) => res.status(404).render('404', { site: SITE_TITLE, current: '404' }));
 
 // ---- Start ----
 app.listen(PORT, () => {

@@ -1,7 +1,12 @@
-<%- include('header', { heading: '全部笔记' }) %>
+<%- include('header', { heading: '全部笔记', current: typeof current !== 'undefined' ? current : '' }) %>
+
+<div class="list-header">
+  <h1>全部笔记</h1>
+  <p>共 <%= notes.length %> 篇笔记，按字母排序</p>
+</div>
 
 <% if (notes.length === 0) { %>
-<div class="empty"><p>还没有笔记。</p></div>
+<div class="empty"><p>还没有笔记。<a href="/new">创建第一篇</a></p></div>
 <% } else { %>
 <div class="note-list">
   <% notes.forEach(n => { %>

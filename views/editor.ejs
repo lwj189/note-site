@@ -1,16 +1,15 @@
-<%- include('header', { heading: typeof note !== 'undefined' ? '编辑: ' + note.title : '新建笔记' }) %>
+<%- include('header', { heading: typeof note !== 'undefined' ? '编辑: ' + note.title : '新建笔记', current: typeof current !== 'undefined' ? current : 'editor' }) %>
 
 <div class="editor-page">
   <div class="editor-toolbar">
-    <label class="toolbar-btn">
+    <button type="button" class="toolbar-btn" onclick="openImagePicker()">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
       插入图片
-      <input type="file" id="tb-image-input" accept="image/*" hidden>
-    </label>
+    </button>
     <label class="toolbar-btn">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
       插入文件
-      <input type="file" id="tb-file-input" accept=".txt,.cpp,.md,.h,.hpp,.c,.py,.js,.ts,.java,.cs,.go,.rs,.rb,.php,.html,.css,.json,.xml,.yaml,.yml,.sql,.sh,.bat,.ps1" hidden>
+      <input type="file" id="tb-file-input" accept=".txt,.cpp,.md,.h,.hpp,.c,.py,.js,.ts,.java,.cs,.go,.rs,.rb,.php,.html,.css,.json,.xml,.yaml,.yml,.sql,.sh,.bat,.ps1,.docx" hidden>
     </label>
     <span class="toolbar-sep"></span>
     <button type="button" class="toolbar-btn" id="tb-preview-btn" onclick="togglePreview()">
@@ -70,6 +69,43 @@
   </form>
 </div>
 
+<!-- Image Picker Modal -->
+<div id="image-picker-overlay" class="picker-overlay" onclick="closeImagePicker(event)">
+  <div class="picker-dialog" onclick="event.stopPropagation()">
+    <div class="picker-header">
+      <span class="picker-title">插入图片</span>
+      <button type="button" class="picker-close" onclick="closeImagePicker()">&times;</button>
+    </div>
+    <div class="picker-tabs">
+      <button class="picker-tab active" onclick="switchPickerTab('gallery', this)">图库图片</button>
+      <button class="picker-tab" onclick="switchPickerTab('upload', this)">本地上传</button>
+    </div>
+
+    <!-- Gallery tab -->
+    <div id="picker-gallery" class="picker-panel active">
+      <div id="picker-gallery-grid" class="picker-gallery-grid">
+        <div class="picker-loading">加载中...</div>
+      </div>
+      <div id="picker-gallery-bar" class="picker-gallery-bar" style="display:none">
+        <div class="picker-bar-left">
+          <button type="button" class="btn btn-sm btn-outline" onclick="toggleSelectAll()">全选</button>
+          <span id="picker-select-count" class="picker-select-count">已选 0 张</span>
+        </div>
+        <button type="button" class="btn btn-sm" onclick="insertSelectedImages()">插入选中图片</button>
+      </div>
+    </div>
+
+    <!-- Upload tab -->
+    <div id="picker-upload" class="picker-panel">
+      <div class="picker-upload-area">
+        <p style="color:var(--muted);font-size:.88rem;margin-bottom:12px">选择本地图片上传到图库，同时插入到笔记中。支持多选。</p>
+        <input type="file" id="picker-image-input" accept="image/*" multiple>
+        <div id="picker-upload-progress" class="result" style="margin-top:12px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 const LANG_MAP = {
   '.cpp':'cpp','.c':'c','.h':'c','.hpp':'cpp',
@@ -83,6 +119,9 @@ const LANG_MAP = {
 
 const textarea = document.getElementById('e-content');
 let previewVisible = false;
+let galleryImages = [];
+let pickerOpen = false;
+let selectedImages = new Set();
 
 function insertAtCursor(text) {
   const start = textarea.selectionStart;
@@ -102,38 +141,169 @@ function showMsg(msg, isErr) {
   el._t = setTimeout(() => el.className = 'toolbar-msg', 3000);
 }
 
-// Insert image
-document.getElementById('tb-image-input').addEventListener('change', async function() {
-  const file = this.files[0];
-  if (!file) return;
-  showMsg('上传图片中...');
+// ---- Image Picker ----
+async function openImagePicker() {
+  document.getElementById('image-picker-overlay').classList.add('active');
+  pickerOpen = true;
+  selectedImages.clear();
+  document.querySelector('.picker-tab').classList.add('active');
+  document.querySelectorAll('.picker-tab')[1].classList.remove('active');
+  document.getElementById('picker-gallery').classList.add('active');
+  document.getElementById('picker-upload').classList.remove('active');
+  await loadGalleryImages();
+}
+
+function closeImagePicker(e) {
+  if (e && e.target !== document.getElementById('image-picker-overlay')) return;
+  document.getElementById('image-picker-overlay').classList.remove('active');
+  pickerOpen = false;
+}
+
+function updateGalleryBar() {
+  const bar = document.getElementById('picker-gallery-bar');
+  const count = document.getElementById('picker-select-count');
+  if (galleryImages.length === 0) {
+    bar.style.display = 'none';
+    return;
+  }
+  bar.style.display = 'flex';
+  count.textContent = '已选 ' + selectedImages.size + ' 张';
+}
+
+async function loadGalleryImages() {
+  const grid = document.getElementById('picker-gallery-grid');
+  grid.innerHTML = '<div class="picker-loading">加载中...</div>';
+  selectedImages.clear();
   try {
-    const fd = new FormData();
-    fd.append('image', file);
-    fd.append('alt', file.name);
-    const res = await fetch('/api/upload-image', { method: 'POST', body: fd });
-    const data = await res.json();
-    if (data.ok) {
-      insertAtCursor(data.md + '\n');
-      showMsg('图片已插入');
+    const res = await fetch('/api/images');
+    galleryImages = await res.json();
+    if (galleryImages.length === 0) {
+      grid.innerHTML = '<div class="picker-empty">图库中还没有图片。<br>切换到"本地上传"上传第一张图片。</div>';
+      updateGalleryBar();
+      return;
+    }
+    grid.innerHTML = galleryImages.map((img, idx) =>
+      '<div class="picker-thumb' + (selectedImages.has(idx) ? ' selected' : '') + '" data-idx="' + idx + '" title="' + img.filename + '">' +
+        '<div class="picker-check">' +
+          '<input type="checkbox" ' + (selectedImages.has(idx) ? 'checked' : '') + ' onclick="event.stopPropagation(); toggleImageSelect(' + idx + ', this.checked)">' +
+        '</div>' +
+        '<img src="' + img.url + '" alt="' + img.filename + '" loading="lazy">' +
+        '<span class="picker-thumb-name">' + (img.filename.length > 16 ? img.filename.slice(0,13)+'...' : img.filename) + '</span>' +
+      '</div>'
+    ).join('');
+    // Attach click handlers
+    grid.querySelectorAll('.picker-thumb').forEach(el => {
+      el.addEventListener('click', function(e) {
+        if (e.target.tagName === 'INPUT') return;
+        const idx = parseInt(this.dataset.idx);
+        const checkbox = this.querySelector('input[type="checkbox"]');
+        const newChecked = !checkbox.checked;
+        checkbox.checked = newChecked;
+        toggleImageSelect(idx, newChecked);
+      });
+    });
+    updateGalleryBar();
+  } catch (err) {
+    grid.innerHTML = '<div class="picker-empty">加载失败，请重试。</div>';
+    updateGalleryBar();
+  }
+}
+
+function toggleImageSelect(idx, checked) {
+  if (checked) selectedImages.add(idx);
+  else selectedImages.delete(idx);
+  const thumb = document.querySelector('.picker-thumb[data-idx="' + idx + '"]');
+  if (thumb) thumb.classList.toggle('selected', checked);
+  updateGalleryBar();
+}
+
+function toggleSelectAll() {
+  if (selectedImages.size === galleryImages.length) {
+    selectedImages.clear();
+  } else {
+    galleryImages.forEach((_, i) => selectedImages.add(i));
+  }
+  document.querySelectorAll('.picker-thumb').forEach(el => {
+    const idx = parseInt(el.dataset.idx);
+    const cb = el.querySelector('input[type="checkbox"]');
+    const checked = selectedImages.has(idx);
+    cb.checked = checked;
+    el.classList.toggle('selected', checked);
+  });
+  updateGalleryBar();
+}
+
+function insertSelectedImages() {
+  if (selectedImages.size === 0) return;
+  const sorted = [...selectedImages].sort((a, b) => a - b);
+  let text = '';
+  sorted.forEach(idx => {
+    const img = galleryImages[idx];
+    text += '![' + img.filename + '](' + img.url + ')\n';
+  });
+  insertAtCursor(text);
+  closeImagePicker();
+}
+
+function switchPickerTab(name, btn) {
+  document.querySelectorAll('.picker-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.picker-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('picker-' + name).classList.add('active');
+  if (name === 'gallery' && galleryImages.length === 0) {
+    loadGalleryImages();
+  }
+}
+
+// Upload from picker (supports multi-select)
+document.getElementById('picker-image-input').addEventListener('change', async function() {
+  const files = this.files;
+  if (files.length === 0) return;
+  const r = document.getElementById('picker-upload-progress');
+  r.className = 'result';
+  r.textContent = '上传 ' + files.length + ' 张图片中...';
+  try {
+    let inserted = 0;
+    for (const file of files) {
+      const fd = new FormData();
+      fd.append('image', file);
+      fd.append('alt', file.name);
+      const res = await fetch('/api/upload-image', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data.ok) {
+        insertAtCursor(data.md + '\n');
+        inserted++;
+      }
+    }
+    if (inserted > 0) {
+      r.className = 'result success';
+      r.textContent = '已上传并插入 ' + inserted + ' 张图片';
+      this.value = '';
+      closeImagePicker();
     } else {
-      showMsg(data.error, true);
+      r.className = 'result error';
+      r.textContent = '上传失败';
     }
   } catch (err) {
-    showMsg('上传失败：' + err.message, true);
+    r.className = 'result error';
+    r.textContent = '上传失败：' + err.message;
   }
-  this.value = '';
 });
 
-// Insert file content
+// ---- File Insert ----
 document.getElementById('tb-file-input').addEventListener('change', function() {
   const file = this.files[0];
   if (!file) return;
+  const ext = '.' + file.name.split('.').pop().toLowerCase();
+  if (ext === '.docx') {
+    insertDocxFile(file);
+    this.value = '';
+    return;
+  }
   showMsg('读取文件中...');
   const reader = new FileReader();
   reader.onload = function() {
     const content = reader.result;
-    const ext = '.' + file.name.split('.').pop().toLowerCase();
     const lang = LANG_MAP[ext] || '';
     let text;
     if (lang && lang !== 'md' && lang !== 'txt') {
@@ -153,7 +323,25 @@ document.getElementById('tb-file-input').addEventListener('change', function() {
   this.value = '';
 });
 
-// Preview toggle
+async function insertDocxFile(file) {
+  showMsg('解析 .docx 文件中...');
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch('/api/parse-docx', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.ok) {
+      insertAtCursor(data.text + '\n');
+      showMsg('.docx 内容已插入');
+    } else {
+      showMsg(data.error, true);
+    }
+  } catch (err) {
+    showMsg('解析 .docx 失败：' + err.message, true);
+  }
+}
+
+// ---- Preview ----
 async function togglePreview() {
   previewVisible = !previewVisible;
   const preview = document.getElementById('e-preview');
@@ -162,21 +350,6 @@ async function togglePreview() {
     btn.classList.add('active');
     textarea.style.display = 'none';
     preview.style.display = 'block';
-    // Render markdown server-side
-    try {
-      const res = await fetch('/api/notes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: 'preview',
-          slug: '__preview__',
-          content: textarea.value,
-          type: 'md'
-        })
-      });
-      // We just want to render, not save. Use a temp approach.
-    } catch(e) {}
-    // Use a simple client-side markdown-like rendering for preview
     preview.innerHTML = textarea.value
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/^### (.+)$/gm, '<h3>$1</h3>')
@@ -198,7 +371,7 @@ async function togglePreview() {
   }
 }
 
-// Form submit
+// ---- Form Submit ----
 document.getElementById('editor-form').addEventListener('submit', async e => {
   e.preventDefault();
   const r = document.getElementById('editor-result');
@@ -219,7 +392,6 @@ document.getElementById('editor-form').addEventListener('submit', async e => {
     if (data.ok) {
       r.className = 'result success';
       r.innerHTML = '已保存！<a href="/note/' + encodeURIComponent(data.slug) + '">查看</a>';
-      // Update slug field in case it was auto-generated
       document.getElementById('e-slug').value = data.slug;
     } else {
       r.className = 'result error';

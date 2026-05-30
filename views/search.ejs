@@ -1,17 +1,17 @@
-<%- include('header', { heading: '搜索' }) %>
+<%- include('header', { heading: '搜索', current: typeof current !== 'undefined' ? current : 'search' }) %>
 
-<form class="search-bar" action="/search" method="get">
-  <input type="text" name="q" placeholder="搜索笔记..." value="<%= query %>" autofocus>
-  <button type="submit">搜索</button>
-</form>
+<div class="search-header">
+  <h1>搜索结果</h1>
+  <% if (query) { %>
+  <p>搜索 "<strong><%= query %></strong>" 找到 <%= notes.length %> 篇笔记</p>
+  <% } else { %>
+  <p>输入关键词搜索笔记标题和内容。</p>
+  <% } %>
+</div>
 
-<% if (query) { %>
-<p style="color:var(--muted);margin-bottom:16px">搜索 "<strong><%= query %></strong>" 找到 <%= notes.length %> 篇笔记</p>
-<% } %>
-
-<% if (notes.length === 0) { %>
+<% if (query && notes.length === 0) { %>
 <div class="empty"><p>没有找到匹配的笔记。</p></div>
-<% } else { %>
+<% } else if (notes.length > 0) { %>
 <div class="note-list">
   <% notes.forEach(n => { %>
   <a href="/note/<%= encodeURIComponent(n.slug) %>" class="note-card">
