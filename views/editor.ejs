@@ -51,6 +51,10 @@
           <option value="css" <%= selType === 'css' ? 'selected' : '' %>>CSS</option>
         </select>
       </div>
+      <div class="editor-field">
+        <label>标签（逗号分隔）</label>
+        <input type="text" name="tags" id="e-tags" value="<%= typeof note !== 'undefined' && note.tags ? note.tags.join(', ') : '' %>" placeholder="如: 工作, 待整理, 灵感">
+      </div>
     </div>
 
     <div class="editor-area">
@@ -412,7 +416,8 @@ document.getElementById('editor-form').addEventListener('submit', async e => {
         title: document.getElementById('e-title').value,
         slug: document.getElementById('e-slug').value,
         content: document.getElementById('e-content').value,
-        type: document.getElementById('e-type').value
+        type: document.getElementById('e-type').value,
+        tags: document.getElementById('e-tags').value
       })
     });
     const data = await res.json();

@@ -121,3 +121,32 @@ public/style.css 更新编辑器/工具栏样式
 - views/editor.ejs — 预览功能改为调用 /api/render 获取真实渲染结果，图片可直接显示而非 Markdown 语法；插入图片后自动切换到预览模式
 - views/note.ejs — 标题右侧添加编辑和删除按钮，与标题等高排列
 - public/style.css — 新增 .note-header flex 布局、预览加载/空状态样式
+
+文件 | 改动 七
+笔记本/标签系统 + 搜索增强
+
+数据模型
+- notes.json 新增 tags 字段（字符串数组），标签即分类，笔记打标签后自动归入同名笔记本
+- 新增 data/notebooks.json 存储笔记本列表
+
+API 新增
+- GET /api/notebooks — 返回笔记本列表及笔记数量
+- POST /api/notebooks — 创建笔记本
+- DELETE /api/notebooks/:name — 删除笔记本
+- GET /notebook/:name — 笔记本页面，显示该标签下的所有笔记
+- POST /api/notes 新增 tags 参数支持
+
+搜索增强
+- 结果分区：标题匹配优先展示，内容匹配其次
+- 关键词高亮：匹配文字用 <mark> 标签包裹（黄色背景）
+- 时间筛选：任意时间/今天/最近7天/最近30天/自定义（精确到分钟）
+
+UI 变更
+- views/header.ejs — 侧边栏新增"笔记本"区域，显示笔记本列表及笔记数量，支持新建笔记本
+- views/editor.ejs — 类型选择下方新增标签输入框（逗号分隔）
+- views/home.ejs / views/list.ejs — 笔记卡片显示标签徽章，可点击跳转笔记本
+- views/note.ejs — 标题下方显示标签列表
+- views/notebook.ejs — 新建笔记本页面
+- views/search.ejs — 重写，支持结果分区、关键词高亮、时间筛选
+- public/app.js — 侧边栏加载笔记本列表、新建笔记本对话框
+- public/style.css — 笔记本卡片琥珀色系、标签徽章、搜索高亮、时间筛选样式

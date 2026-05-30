@@ -1,12 +1,12 @@
-<%- include('header', { heading: '全部笔记', current: typeof current !== 'undefined' ? current : '' }) %>
+<%- include('header', { heading: '笔记本: ' + notebook, current: 'notebook' }) %>
 
 <div class="list-header">
-  <h1>全部笔记</h1>
-  <p>共 <%= notes.length %> 篇笔记，按字母排序</p>
+  <h1>📁 <%= notebook %></h1>
+  <p>共 <%= notes.length %> 篇笔记</p>
 </div>
 
 <% if (notes.length === 0) { %>
-<div class="empty"><p>还没有笔记。<a href="/new">创建第一篇</a></p></div>
+<div class="empty"><p>这个笔记本还是空的。</p><p style="margin-top:8px">编辑笔记时添加标签 "<strong><%= notebook %></strong>" 即可将其归入此笔记本。</p></div>
 <% } else { %>
 <div class="note-list">
   <% notes.forEach(n => { %>
@@ -14,13 +14,6 @@
     <a href="/note/<%= encodeURIComponent(n.slug) %>" class="note-card-link">
       <h3><%= n.title %> <span class="badge"><%= n.type %></span></h3>
       <div class="meta"><%= new Date(n.updatedAt).toLocaleDateString('zh-CN') %> &middot; /note/<%= n.slug %></div>
-      <% if (n.tags && n.tags.length) { %>
-      <div class="tag-list">
-        <% n.tags.forEach(t => { %>
-        <a href="/notebook/<%= encodeURIComponent(t) %>" class="tag-badge" onclick="event.stopPropagation()"><%= t %></a>
-        <% }) %>
-      </div>
-      <% } %>
     </a>
     <div class="card-actions card-actions-inline">
       <a href="/edit/<%= encodeURIComponent(n.slug) %>" class="card-action-btn card-edit" title="编辑" onclick="event.stopPropagation()">
