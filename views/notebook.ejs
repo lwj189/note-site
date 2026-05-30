@@ -1,9 +1,49 @@
 <%- include('header', { heading: '笔记本: ' + notebook, current: 'notebook' }) %>
 
 <div class="list-header">
-  <h1>📁 <%= notebook %></h1>
+  <div class="list-header-row">
+    <h1>📁 <%= notebook %></h1>
+    <button class="card-action-btn" title="设置" onclick="editNotebookMeta('<%= notebook %>')" style="opacity:1;width:auto;padding:7px 12px;gap:6px;font-size:.85rem;font-family:inherit;font-weight:500">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      <span>设置</span>
+    </button>
+  </div>
   <p>共 <%= notes.length %> 篇笔记</p>
 </div>
+
+<script>
+function editNotebookMeta(name) {
+  var html = '<div class="settings-overlay" onclick="closeNbMeta(event)"><div class="settings-dialog" onclick="event.stopPropagation()">' +
+    '<div class="settings-header"><span class="settings-title">笔记本设置</span><button class="picker-close" onclick="closeNbMeta()">&times;</button></div>' +
+    '<div class="settings-body">' +
+      '<div class="modal-field"><label>名称</label><input type="text" id="nbm-name" value="' + name.replace(/"/g, '&quot;') + '"></div>' +
+    '</div>' +
+    '<div class="settings-footer" style="display:flex;gap:10px;justify-content:space-between">' +
+      '<span style="font-size:.8rem;color:var(--muted)">改名会更新关联笔记的标签</span>' +
+      '<button class="btn" onclick="saveNbMeta(\'' + name + '\')">保存</button>' +
+    '</div>' +
+  '</div></div>';
+  var div = document.createElement('div'); div.id = 'nb-meta-modal'; div.innerHTML = html;
+  document.body.appendChild(div);
+}
+function closeNbMeta(e) {
+  if (e && e.target !== document.querySelector('#nb-meta-modal .settings-overlay')) return;
+  var el = document.getElementById('nb-meta-modal'); if (el) el.remove();
+}
+async function saveNbMeta(oldName) {
+  var newName = document.getElementById('nbm-name').value.trim();
+  if (!newName) { alert('请输入名称'); return; }
+  try {
+    var res = await fetch('/api/notebooks/' + encodeURIComponent(oldName), {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newName: newName })
+    });
+    var data = await res.json();
+    if (data.ok) window.location.href = '/notebook/' + encodeURIComponent(data.name);
+    else alert(data.error);
+  } catch(err) { alert('保存失败：' + err.message); }
+}
+</script>
 
 <% if (notes.length === 0) { %>
 <div class="empty"><p>这个笔记本还是空的。</p><p style="margin-top:8px">编辑笔记时添加标签 "<strong><%= notebook %></strong>" 即可将其归入此笔记本。</p></div>

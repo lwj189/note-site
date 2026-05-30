@@ -902,8 +902,53 @@ pre.plain {
 
 /* ---- List page ---- */
 .list-header { margin-bottom: 24px; max-width: 900px; }
+.list-header-row { display: flex; align-items: center; gap: 12px; }
 .list-header h1 { font-size: 1.4rem; }
 .list-header p { color: var(--muted); font-size: .9rem; margin-top: 4px; }
+
+/* Modal form fields */
+.modal-field { margin-bottom: 14px; }
+.modal-field:last-child { margin-bottom: 0; }
+.modal-field label {
+  display: block;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.modal-field input,
+.modal-field select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  font-size: .9rem;
+  font-family: inherit;
+  outline: none;
+  background: var(--input-bg);
+  color: var(--fg);
+  transition: border-color .2s;
+}
+.modal-field input:focus,
+.modal-field select:focus { border-color: var(--accent); }
+.modal-check-list {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 0;
+}
+.modal-check-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  font-size: .85rem;
+  cursor: pointer;
+  transition: background .1s;
+}
+.modal-check-item:hover { background: var(--card-bg); }
+.modal-check-item input[type="checkbox"] { accent-color: var(--accent); }
 
 /* ---- Search page ---- */
 .search-header { margin-bottom: 24px; max-width: 900px; }

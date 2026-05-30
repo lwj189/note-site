@@ -20,19 +20,20 @@
   </div>
 
   <form id="editor-form">
-    <div class="editor-meta">
+    <% const isQuick = typeof quick !== 'undefined' && quick; %>
+    <div class="editor-meta" id="editor-meta" style="<%= isQuick ? 'display:none' : '' %>">
       <div class="editor-field">
         <label>标题</label>
-        <input type="text" name="title" id="e-title" value="<%= typeof note !== 'undefined' ? note.title : '' %>" placeholder="笔记标题" required>
+        <input type="text" name="title" id="e-title" value="<%= typeof note !== 'undefined' ? note.title : (typeof prefill !== 'undefined' ? prefill.title : '') %>" placeholder="笔记标题"<%= isQuick ? '' : ' required' %>>
       </div>
       <div class="editor-field">
         <label>网址路径</label>
-        <input type="text" name="slug" id="e-slug" value="<%= typeof note !== 'undefined' ? note.slug : '' %>" placeholder="note-url-path" required>
+        <input type="text" name="slug" id="e-slug" value="<%= typeof note !== 'undefined' ? note.slug : (typeof prefill !== 'undefined' ? prefill.slug : '') %>" placeholder="note-url-path"<%= isQuick ? '' : ' required' %>>
       </div>
       <div class="editor-field">
         <label>类型</label>
         <select name="type" id="e-type">
-          <% const selType = typeof note !== 'undefined' ? note.type : 'md'; %>
+          <% const selType = typeof note !== 'undefined' ? note.type : (typeof prefill !== 'undefined' && prefill.type ? prefill.type : 'md'); %>
           <option value="md" <%= selType === 'md' ? 'selected' : '' %>>Markdown (.md)</option>
           <option value="txt" <%= selType === 'txt' ? 'selected' : '' %>>纯文本 (.txt)</option>
           <option value="cpp" <%= selType === 'cpp' ? 'selected' : '' %>>C++ (.cpp)</option>
@@ -53,7 +54,7 @@
       </div>
       <div class="editor-field">
         <label>标签（逗号分隔）</label>
-        <input type="text" name="tags" id="e-tags" value="<%= typeof note !== 'undefined' && note.tags ? note.tags.join(', ') : '' %>" placeholder="如: 工作, 待整理, 灵感">
+        <input type="text" name="tags" id="e-tags" value="<%= typeof note !== 'undefined' && note.tags ? note.tags.join(', ') : (typeof prefill !== 'undefined' ? prefill.tags : '') %>" placeholder="如: 工作, 待整理, 灵感">
       </div>
     </div>
 
@@ -63,11 +64,14 @@
     </div>
 
     <div class="editor-actions">
-      <button type="submit" class="btn"><%= typeof note !== 'undefined' ? '保存笔记' : '发布笔记' %></button>
+      <button type="submit" class="btn"><%= typeof note !== 'undefined' ? '保存笔记' : (isQuick ? '保存（自动生成标题）' : '保存笔记') %></button>
       <% if (typeof note !== 'undefined') { %>
       <a href="/note/<%= encodeURIComponent(note.slug) %>" class="btn btn-outline" target="_blank">查看笔记</a>
       <% } %>
       <a href="/" class="btn btn-outline">返回首页</a>
+      <% if (isQuick) { %>
+      <button type="button" class="btn btn-outline" onclick="toggleMeta()" style="margin-left:auto">设置标题/标签</button>
+      <% } %>
     </div>
     <div id="editor-result" class="result"></div>
   </form>
@@ -403,21 +407,52 @@ function showPreviewAfterInsert() {
 }
 
 // ---- Form Submit ----
+const isQuick = <%= isQuick ? 'true' : 'false' %>;
+function toggleMeta() {
+  var meta = document.getElementById('editor-meta');
+  if (meta.style.display === 'none') {
+    meta.style.display = 'flex';
+  } else {
+    meta.style.display = 'none';
+  }
+}
+
 document.getElementById('editor-form').addEventListener('submit', async e => {
   e.preventDefault();
   const r = document.getElementById('editor-result');
   r.className = 'result';
   r.textContent = '保存中...';
   try {
+    var title = document.getElementById('e-title').value.trim();
+    var slug = document.getElementById('e-slug').value.trim();
+    var type = document.getElementById('e-type').value;
+    var tags = document.getElementById('e-tags').value;
+    var content = document.getElementById('e-content').value;
+
+    // Quick mode: auto-generate metadata
+    if (isQuick && !title) {
+      const resName = await fetch('/api/next-name?type=note');
+      const d = await resName.json();
+      title = d.name;
+      slug = d.name.replace(/[^\w一-鿿]/g, '-').replace(/-+/g, '-');
+      // Detect type from content
+      if (/```(\w+)/.test(content)) {
+        var m = content.match(/```(\w+)/);
+        if (m) type = m[1].toLowerCase();
+      }
+    }
+    if (!title) { r.className = 'result error'; r.textContent = '请输入标题'; return; }
+    if (!slug) slug = title.replace(/[^\w一-鿿]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+
     const res = await fetch('/api/notes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        title: document.getElementById('e-title').value,
-        slug: document.getElementById('e-slug').value,
-        content: document.getElementById('e-content').value,
-        type: document.getElementById('e-type').value,
-        tags: document.getElementById('e-tags').value
+        title: title,
+        slug: slug,
+        content: content,
+        type: type,
+        tags: tags
       })
     });
     const data = await res.json();
