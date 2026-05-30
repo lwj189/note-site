@@ -417,10 +417,45 @@ app.post('/api/notebooks', (req, res) => {
   res.json({ ok: true, name: name.trim() });
 });
 
-app.delete('/api/notebooks/:name', (req, res) => {
+app.put('/api/notebooks/:name', (req, res) => {
+  const { newName } = req.body;
+  if (!newName || !newName.trim()) return res.status(400).json({ error: '名称不能为空' });
   const notebooks = loadNotebooks();
   const idx = notebooks.indexOf(req.params.name);
   if (idx === -1) return res.status(404).json({ error: 'not found' });
+  if (notebooks.includes(newName.trim()) && newName.trim() !== req.params.name) {
+    return res.status(400).json({ error: '笔记本已存在' });
+  }
+  // Rename tag in all notes
+  const notes = loadNotes();
+  notes.forEach(n => {
+    if (n.tags && n.tags.includes(req.params.name)) {
+      n.tags = n.tags.map(t => t === req.params.name ? newName.trim() : t);
+    }
+  });
+  saveNotes(notes);
+  notebooks[idx] = newName.trim();
+  saveNotebooks(notebooks);
+  res.json({ ok: true, name: newName.trim() });
+});
+
+app.delete('/api/notebooks/:name', (req, res) => {
+  const action = req.query.action || 'delete';
+  const notebooks = loadNotebooks();
+  const idx = notebooks.indexOf(req.params.name);
+  if (idx === -1) return res.status(404).json({ error: 'not found' });
+
+  if (action === 'untag') {
+    // Remove this tag from all notes (move notes out of notebook)
+    const notes = loadNotes();
+    notes.forEach(n => {
+      if (n.tags) {
+        n.tags = n.tags.filter(t => t !== req.params.name);
+      }
+    });
+    saveNotes(notes);
+  }
+  // Delete the notebook
   notebooks.splice(idx, 1);
   saveNotebooks(notebooks);
   res.json({ ok: true });
