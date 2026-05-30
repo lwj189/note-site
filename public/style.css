@@ -291,16 +291,22 @@ main {
   max-width: 900px;
 }
 .note-card {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   padding: 18px 22px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  text-decoration: none;
-  color: var(--fg);
-  transition: all .15s;
   background: var(--card-bg);
+  transition: all .15s;
 }
 .note-card:hover { border-color: var(--accent); box-shadow: 0 2px 8px rgba(67,97,238,.08); }
+.note-card-link {
+  flex: 1;
+  min-width: 0;
+  text-decoration: none;
+  color: var(--fg);
+}
 .note-card h3 { font-size: 1.05rem; margin-bottom: 4px; }
 .note-card .meta { font-size: .82rem; color: var(--muted); }
 .note-card .preview { font-size: .88rem; color: var(--muted); margin-top: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -316,6 +322,47 @@ main {
   margin-left: 8px;
   vertical-align: middle;
 }
+
+/* ---- Card actions (edit/delete on hover) ---- */
+.card-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity .18s;
+}
+/* Home page: absolute top-right */
+.home-recent-card .card-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+}
+.home-recent-card:hover .card-actions { opacity: 1; }
+
+/* List page: inline right side */
+.card-actions-inline {
+  flex-shrink: 0;
+}
+.note-card:hover .card-actions-inline { opacity: 1; }
+
+.card-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all .15s;
+  text-decoration: none;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+.card-action-btn:hover { transform: scale(1.08); }
+.card-edit:hover { background: #eef2ff; color: var(--accent); }
+.card-del:hover { background: #fef2f2; color: #dc2626; }
 
 .empty { text-align: center; color: var(--muted); padding: 80px 0; }
 .empty p { font-size: 1.05rem; }
@@ -585,16 +632,19 @@ pre.plain {
   max-width: 1000px;
 }
 .home-recent-card {
-  display: block;
-  padding: 18px 20px;
+  position: relative;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  text-decoration: none;
-  color: var(--fg);
   background: var(--card-bg);
   transition: all .15s;
 }
 .home-recent-card:hover { border-color: var(--accent); box-shadow: 0 2px 8px rgba(67,97,238,.08); }
+.home-recent-card-link {
+  display: block;
+  padding: 18px 20px;
+  text-decoration: none;
+  color: var(--fg);
+}
 .home-recent-card h3 { font-size: 1rem; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
 .home-recent-card .meta { font-size: .8rem; color: var(--muted); }
 .home-recent-card .preview {
