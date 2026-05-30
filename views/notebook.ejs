@@ -12,11 +12,29 @@
 </div>
 
 <script>
-function editNotebookMeta(name) {
+async function editNotebookMeta(name) {
+  // Fetch notes not in this notebook
+  var allRes = await fetch('/api/notes');
+  var allNotes = await allRes.json();
+  var outsideNotes = allNotes.filter(function(n) { return !n.tags || n.tags.indexOf(name) === -1; });
+  outsideNotes.sort(function(a,b) { return new Date(b.updatedAt) - new Date(a.updatedAt); });
+  var noteList = '';
+  if (outsideNotes.length) {
+    noteList = '<div class="modal-field"><label>选择笔记加入此笔记本</label><div class="modal-check-list">' +
+      outsideNotes.slice(0, 20).map(function(n) {
+        return '<label class="modal-check-item"><input type="checkbox" value="' + n.slug + '"> ' + n.title.replace(/</g,'&lt;') + '</label>';
+      }).join('') +
+      (outsideNotes.length > 20 ? '<div style="padding:6px 12px;font-size:.78rem;color:var(--muted)">还有 ' + (outsideNotes.length - 20) + ' 篇...</div>' : '') +
+    '</div></div>';
+  } else {
+    noteList = '<div style="font-size:.82rem;color:var(--muted);margin-bottom:12px">所有笔记已在此笔记本中。</div>';
+  }
+
   var html = '<div class="settings-overlay" onclick="closeNbMeta(event)"><div class="settings-dialog" onclick="event.stopPropagation()">' +
     '<div class="settings-header"><span class="settings-title">笔记本设置</span><button class="picker-close" onclick="closeNbMeta()">&times;</button></div>' +
     '<div class="settings-body">' +
       '<div class="modal-field"><label>名称</label><input type="text" id="nbm-name" value="' + name.replace(/"/g, '&quot;') + '"></div>' +
+      noteList +
     '</div>' +
     '<div class="settings-footer" style="display:flex;gap:10px;justify-content:space-between">' +
       '<span style="font-size:.8rem;color:var(--muted)">改名会更新关联笔记的标签</span>' +
@@ -33,10 +51,13 @@ function closeNbMeta(e) {
 async function saveNbMeta(oldName) {
   var newName = document.getElementById('nbm-name').value.trim();
   if (!newName) { alert('请输入名称'); return; }
+  // Collect selected note slugs
+  var slugs = [];
+  document.querySelectorAll('#nb-meta-modal .modal-check-item input:checked').forEach(function(cb) { slugs.push(cb.value); });
   try {
     var res = await fetch('/api/notebooks/' + encodeURIComponent(oldName), {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ newName: newName })
+      body: JSON.stringify({ newName: newName, addNotes: slugs })
     });
     var data = await res.json();
     if (data.ok) window.location.href = '/notebook/' + encodeURIComponent(data.name);
