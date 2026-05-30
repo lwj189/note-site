@@ -369,6 +369,31 @@ async function renderPreview() {
     const data = await res.json();
     if (data.html) {
       preview.innerHTML = data.html;
+      // Make images resizable
+      preview.querySelectorAll('img').forEach(img => {
+        const wrapper = document.createElement('span');
+        wrapper.className = 'img-resizable';
+        wrapper.style.display = 'inline-block';
+        wrapper.style.position = 'relative';
+        wrapper.style.maxWidth = '100%';
+        img.parentNode.insertBefore(wrapper, img);
+        wrapper.appendChild(img);
+        img.style.display = 'block';
+        img.style.width = '100%';
+        img.style.height = 'auto';
+        // Track resize via ResizeObserver
+        const url = img.getAttribute('src');
+        new ResizeObserver(() => {
+          const w = Math.round(img.getBoundingClientRect().width);
+          if (w > 0 && url) {
+            const re = new RegExp('!\\[[^\\]]*\\]\\(\\s*' + url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\)', 'g');
+            const newMd = '<img src="' + url + '" width="' + w + '">';
+            if (re.test(textarea.value)) {
+              textarea.value = textarea.value.replace(re, newMd);
+            }
+          }
+        }).observe(wrapper);
+      });
     } else {
       preview.innerHTML = '<div class="preview-empty">渲染失败</div>';
     }

@@ -208,3 +208,21 @@ API 新增
 - views/notebook.ejs — 新增"设置"按钮和笔记本重命名模态框
 - public/app.js — showNewNote/submitNewNote/quickCreateNote 模态框函数
 - public/style.css — 模态框表单字段样式
+
+文件 | 改动 十
+图片交互增强：只读灯箱 + 编辑器缩放
+
+只读灯箱
+- 笔记页面图片可点击放大查看，弹出全屏灯箱（黑色半透明背景）
+- 图片光标显示 zoom-in，点击外部或关闭按钮退出
+
+编辑器缩放
+- 预览模式下图片可通过右下角拖拽手柄调整显示宽度
+- hover 时显示蓝色虚线边框 + 蓝色拖拽角标
+- 拖拽后自动将 Markdown 图片语法转为带 width 的 HTML 标签
+- 使用 ResizeObserver 实时同步尺寸到源码
+
+涉及文件
+- views/note.ejs — 图片点击灯箱 JS + HTML
+- views/editor.ejs — 预览图片 ResizeObserver 缩放逻辑
+- public/style.css — 灯箱样式、编辑器缩放手柄样式
