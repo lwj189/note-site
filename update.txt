@@ -175,3 +175,36 @@ UI 变更
 - views/header.ejs — 设置按钮 + 侧边栏底部重构
 - public/app.js — 设置面板、笔记本编辑/删除、主题/字体应用
 - public/style.css — 暗色主题变量、设置模态框、笔记本操作按钮样式
+
+文件 | 改动 九
+新建笔记/笔记本模态框 + 自动命名 + 元数据设置按钮
+
+新建笔记
+- 点击"新建笔记"弹出模态框，可填写标题/网址/类型/标签
+- "先写内容"选项 → 进入编辑器先写内容，保存时自动生成标题"新建笔记N"
+- 自动检测代码块语言作为类型，标题自增编号
+- 编辑器支持 quick 模式（隐藏元数据字段，保存时自动生成）
+
+新建笔记本
+- 点击"+"弹出模态框，填写名称 + 可选添加已有笔记（复选框列表）
+- "直接创建"选项 → 自动以"新建笔记本N"命名创建
+- 创建时可选择已有笔记加入笔记本（自动打标签）
+
+元数据设置按钮
+- 笔记页面：编辑/删除旁新增"设置"齿轮按钮 → 弹窗编辑标题/类型/标签
+- 笔记本页面：标题右侧新增"设置"按钮 → 弹窗重命名笔记本
+- 重命名笔记本时自动更新关联笔记的标签名
+
+API 新增
+- GET /api/next-name?type=note|notebook — 返回下一个自动名称
+- POST /api/notebooks 新增 notes 参数，支持创建时批量添加笔记标签
+- GET /new 支持 ?title=&slug=&type=&tags= 预填参数，支持 ?quick=1 快速模式
+
+涉及文件
+- server.js — 新增 /api/next-name，更新 /new 和 /api/notebooks 路由
+- views/header.ejs — "新建笔记"按钮改为触发模态框
+- views/editor.ejs — 支持预填参数和 quick 模式自动生成元数据
+- views/note.ejs — 新增"设置"按钮和元数据编辑模态框
+- views/notebook.ejs — 新增"设置"按钮和笔记本重命名模态框
+- public/app.js — showNewNote/submitNewNote/quickCreateNote 模态框函数
+- public/style.css — 模态框表单字段样式

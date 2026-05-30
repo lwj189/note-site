@@ -255,7 +255,14 @@ app.get('/note/:slug', (req, res) => {
 });
 
 app.get('/new', (req, res) => {
-  res.render('editor', { site: SITE_TITLE, current: 'editor' });
+  const quick = req.query.quick === '1';
+  const prefill = quick ? {} : {
+    title: req.query.title || '',
+    slug: req.query.slug || '',
+    type: req.query.type || 'md',
+    tags: req.query.tags || ''
+  };
+  res.render('editor', { site: SITE_TITLE, current: 'editor', prefill, quick });
 });
 
 app.get('/edit/:slug', (req, res) => {
@@ -408,13 +415,42 @@ app.get('/api/notebooks', (req, res) => {
 });
 
 app.post('/api/notebooks', (req, res) => {
-  const { name } = req.body;
+  const { name, notes: noteSlugs } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: '名称不能为空' });
   const notebooks = loadNotebooks();
   if (notebooks.includes(name.trim())) return res.status(400).json({ error: '笔记本已存在' });
   notebooks.push(name.trim());
   saveNotebooks(notebooks);
+  // Add tag to selected notes
+  if (noteSlugs && noteSlugs.length) {
+    const allNotes = loadNotes();
+    noteSlugs.forEach(slug => {
+      const n = allNotes.find(x => x.slug === slug);
+      if (n) {
+        if (!n.tags) n.tags = [];
+        if (!n.tags.includes(name.trim())) n.tags.push(name.trim());
+      }
+    });
+    saveNotes(allNotes);
+    gitSync();
+  }
   res.json({ ok: true, name: name.trim() });
+});
+
+// Auto-name for new notes/notebooks
+app.get('/api/next-name', (req, res) => {
+  const type = req.query.type || 'note';
+  if (type === 'notebook') {
+    const notebooks = loadNotebooks();
+    let num = 1;
+    while (notebooks.includes('新建笔记本' + num)) num++;
+    res.json({ name: '新建笔记本' + num });
+  } else {
+    const notes = loadNotes();
+    let num = 1;
+    while (notes.some(n => n.title === '新建笔记' + num)) num++;
+    res.json({ name: '新建笔记' + num });
+  }
 });
 
 app.put('/api/notebooks/:name', (req, res) => {

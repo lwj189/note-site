@@ -14,10 +14,14 @@
       <% } %>
     </div>
     <div class="note-header-actions">
-      <a href="/edit/<%= encodeURIComponent(note.slug) %>" class="card-action-btn card-edit" title="编辑">
+      <a href="/edit/<%= encodeURIComponent(note.slug) %>" class="card-action-btn card-edit" title="编辑内容">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         <span>编辑</span>
       </a>
+      <button class="card-action-btn" title="设置" onclick="editNoteMeta('<%= note.slug %>', '<%= note.title.replace(/'/g, "\\'") %>', '<%= note.type %>', '<%= note.tags ? note.tags.join(', ') : '' %>')" style="opacity:1;width:auto;padding:7px 12px;gap:6px;font-size:.85rem;font-family:inherit;font-weight:500">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        <span>设置</span>
+      </button>
       <button class="card-action-btn card-del" title="删除" onclick="delNote('<%= note.slug %>')">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         <span>删除</span>
@@ -43,6 +47,39 @@ async function delNote(slug) {
   } catch (err) {
     alert('删除失败：' + err.message);
   }
+}
+
+function editNoteMeta(slug, title, type, tags) {
+  var html = '<div class="settings-overlay" onclick="closeNoteMeta(event)"><div class="settings-dialog" onclick="event.stopPropagation()">' +
+    '<div class="settings-header"><span class="settings-title">编辑信息</span><button class="picker-close" onclick="closeNoteMeta()">&times;</button></div>' +
+    '<div class="settings-body">' +
+      '<div class="modal-field"><label>标题</label><input type="text" id="nm-title" value="' + title.replace(/"/g, '&quot;') + '"></div>' +
+      '<div class="modal-field"><label>类型</label><select id="nm-type"><option value="md"' + (type==='md'?' selected':'') + '>Markdown</option><option value="txt"' + (type==='txt'?' selected':'') + '>纯文本</option><option value="cpp"' + (type==='cpp'?' selected':'') + '>C++</option><option value="python"' + (type==='python'?' selected':'') + '>Python</option><option value="javascript"' + (type==='javascript'?' selected':'') + '>JavaScript</option></select></div>' +
+      '<div class="modal-field"><label>标签</label><input type="text" id="nm-tags" value="' + tags.replace(/"/g, '&quot;') + '"></div>' +
+    '</div>' +
+    '<div class="settings-footer"><button class="btn" onclick="saveNoteMeta(\'' + slug + '\')">保存</button></div>' +
+  '</div></div>';
+  var div = document.createElement('div'); div.id = 'note-meta-modal'; div.innerHTML = html;
+  document.body.appendChild(div);
+}
+function closeNoteMeta(e) {
+  if (e && e.target !== document.querySelector('#note-meta-modal .settings-overlay')) return;
+  var el = document.getElementById('note-meta-modal'); if (el) el.remove();
+}
+async function saveNoteMeta(slug) {
+  var title = document.getElementById('nm-title').value.trim();
+  var type = document.getElementById('nm-type').value;
+  var tags = document.getElementById('nm-tags').value.trim();
+  if (!title) { alert('请输入标题'); return; }
+  try {
+    var res = await fetch('/api/notes', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: title, slug: slug, content: document.querySelector('.note-body').innerHTML.replace(/<mark>/g,'').replace(/<\/mark>/g,''), type: type, tags: tags })
+    });
+    var data = await res.json();
+    if (data.ok) window.location.reload();
+    else alert(data.error);
+  } catch(err) { alert('保存失败：' + err.message); }
 }
 </script>
 
