@@ -15,10 +15,11 @@
     <span class="logo-text">MyNote</span>
   </a>
 
-  <form class="sidebar-search" action="/search" method="get">
+  <div class="sidebar-search">
     <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <input type="text" name="q" placeholder="搜索笔记..." value="<%= typeof query !== 'undefined' ? query : '' %>">
-  </form>
+    <input type="text" id="sidebar-search-input" placeholder="搜索笔记..." autocomplete="off">
+    <div id="sidebar-search-results" class="sidebar-search-results" style="display:none"></div>
+  </div>
 
   <nav class="sidebar-nav">
     <a href="/" class="nav-card nav-home<%= typeof current !== 'undefined' && current === 'home' ? ' active' : '' %>">

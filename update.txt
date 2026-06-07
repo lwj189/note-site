@@ -26,3 +26,23 @@
 - views/header.ejs — 侧边栏回收站入口
 - public/style.css — 回收站样式、红色导航卡
 - README.md — 新建
+
+## 用户体验 + 性能改进
+
+### 用户体验
+1. **侧边栏实时搜索** — 输入即时 AJAX 过滤，200ms 防抖，显示前 8 条 + 查看全部链接
+2. **返回顶部按钮** — 笔记页右下角 ↑ 按钮，滚动超 300px 显示
+3. **图库 clipboard 修复** — 改用 navigator.clipboard.writeText，保留 fallback
+4. **移动端删除按钮** — 触屏设备下图库删除按钮始终可见
+
+### 性能
+5. **数据内存缓存** — loadNotes/loadNotebooks 改为读内存，写入 500ms 防抖刷盘
+6. **Git 防抖同步** — gitSync 改为 10 秒防抖，多次修改合并为一次提交
+
+### 涉及文件
+- server.js — 数据缓存层、Git 防抖
+- public/app.js — 侧边栏实时搜索 JS
+- public/style.css — 搜索下拉面板、返回顶部按钮、移动端删除、回收站导航
+- views/header.ejs — 搜索框改为实时搜索容器
+- views/footer.ejs — 返回顶部按钮 + JS
+- views/gallery.ejs — clipboard API 更新

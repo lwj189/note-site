@@ -237,7 +237,7 @@ function deleteNotebook(name, count) {
 
 // Card delete
 async function delNoteCard(btn, slug) {
-  if (!confirm('确定删除笔记 "' + slug + '" 吗？此操作不可恢复。')) return;
+  if (!confirm('确定将笔记 "' + slug + '" 移到回收站？')) return;
   try {
     var res = await fetch('/api/notes/' + encodeURIComponent(slug), { method: 'DELETE' });
     var data = await res.json();
@@ -252,3 +252,78 @@ async function delNoteCard(btn, slug) {
     } else { alert('删除失败：' + data.error); }
   } catch (err) { alert('删除失败：' + err.message); }
 }
+
+// ---- Sidebar live search ----
+(function() {
+  var input = document.getElementById('sidebar-search-input');
+  var results = document.getElementById('sidebar-search-results');
+  if (!input || !results) return;
+
+  var notesCache = null;
+  var debounceTimer = null;
+
+  function loadNotesCache() {
+    if (notesCache) return Promise.resolve(notesCache);
+    return fetch('/api/notes').then(function(r) { return r.json(); }).then(function(data) {
+      notesCache = data;
+      return notesCache;
+    });
+  }
+
+  function doSearch(query) {
+    if (!query || query.length < 1) {
+      results.style.display = 'none';
+      return;
+    }
+    var q = query.toLowerCase().trim();
+    loadNotesCache().then(function(notes) {
+      var matches = notes.filter(function(n) {
+        return n.title.toLowerCase().indexOf(q) !== -1 ||
+               (n.slug && n.slug.toLowerCase().indexOf(q) !== -1);
+      });
+      matches.sort(function(a, b) {
+        return new Date(b.updatedAt) - new Date(a.updatedAt);
+      });
+      matches = matches.slice(0, 8);
+
+      if (matches.length === 0) {
+        results.innerHTML = '<div class="search-result-empty">无匹配结果</div>';
+      } else {
+        var html = '';
+        matches.forEach(function(n) {
+          var title = n.title;
+          var idx = title.toLowerCase().indexOf(q);
+          if (idx !== -1) {
+            title = title.substring(0, idx) + '<strong>' + title.substring(idx, idx + q.length) + '</strong>' + title.substring(idx + q.length);
+          }
+          html += '<a href="/note/' + encodeURIComponent(n.slug) + '" class="search-result-item">' +
+            '<span class="search-result-title">' + title + '</span>' +
+            '<span class="search-result-type badge">' + n.type + '</span>' +
+            '</a>';
+        });
+        html += '<a href="/search?q=' + encodeURIComponent(query) + '" class="search-result-all">→ 查看全部结果</a>';
+        results.innerHTML = html;
+      }
+      results.style.display = 'block';
+    });
+  }
+
+  input.addEventListener('input', function() {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(function() { doSearch(input.value); }, 200);
+  });
+
+  input.addEventListener('focus', function() {
+    if (input.value) doSearch(input.value);
+  });
+
+  // Close on click outside
+  document.addEventListener('click', function(e) {
+    if (!input.contains(e.target) && !results.contains(e.target)) {
+      results.style.display = 'none';
+    }
+  });
+
+  // Also refresh cache periodically
+  setInterval(function() { notesCache = null; }, 60000);
+})();

@@ -137,6 +137,75 @@ body {
   color: var(--muted);
   pointer-events: none;
 }
+.sidebar-search { position: relative; }
+.sidebar-search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.12);
+  max-height: 320px;
+  overflow-y: auto;
+  margin-top: 4px;
+}
+html.dark .sidebar-search-results { background: #1e293b; border-color: #475569; }
+.search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  text-decoration: none;
+  color: var(--fg);
+  font-size: .85rem;
+  border-bottom: 1px solid var(--border);
+  transition: background .1s;
+}
+.search-result-item:last-child { border-bottom: none; }
+.search-result-item:hover { background: #f1f5f9; }
+html.dark .search-result-item:hover { background: #334155; }
+.search-result-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.search-result-title strong { color: var(--accent); }
+.search-result-empty { padding: 16px; text-align: center; color: var(--muted); font-size: .82rem; }
+.search-result-all {
+  display: block;
+  text-align: center;
+  padding: 10px;
+  font-size: .82rem;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+.search-result-all:hover { text-decoration: underline; }
+
+/* ---- Scroll to top ---- */
+.scroll-top {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 1.3rem;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 10px rgba(67,97,238,.3);
+  transition: all .2s;
+  z-index: 90;
+}
+.scroll-top:hover {
+  background: var(--accent-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(67,97,238,.4);
+}
 .sidebar-search input {
   width: 100%;
   padding: 9px 12px 9px 36px;
@@ -829,6 +898,12 @@ pre.plain {
 }
 .gallery-card:hover .gallery-del { opacity: 1; }
 .gallery-del:hover { background: #dc2626; }
+
+/* On touch/mobile, always show delete button */
+@media (hover: none) and (pointer: coarse) {
+  .gallery-del { opacity: 1; }
+  .gallery-card .gallery-del { opacity: 1; }
+}
 
 /* Lightbox */
 .lightbox {

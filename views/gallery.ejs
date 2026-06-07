@@ -82,6 +82,18 @@ function closeLightbox(e) {
 
 function copyRef(id) {
   const el = document.getElementById(id);
+  const text = el.value;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = el.nextElementSibling;
+      btn.textContent = '已复制';
+      setTimeout(() => btn.textContent = '复制', 1500);
+    }).catch(() => fallbackCopy(el));
+  } else {
+    fallbackCopy(el);
+  }
+}
+function fallbackCopy(el) {
   el.select();
   document.execCommand('copy');
   const btn = el.nextElementSibling;
