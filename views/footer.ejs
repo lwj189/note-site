@@ -1,5 +1,16 @@
 </main>
 </div><!-- .app-layout -->
 <script src="/app.js"></script>
+<script>
+// 检测桌面模式
+if (window.electronAPI && window.electronAPI.isElectron) {
+  const badge = document.getElementById('sidebar-mode-badge');
+  if (badge) {
+    badge.textContent = '🖥️ 桌面版';
+    badge.style.background = 'var(--accent)';
+    badge.style.color = '#fff';
+  }
+}
+</script>
 </body>
 </html>

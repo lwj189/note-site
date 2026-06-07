@@ -1,0 +1,53 @@
+<%- include('header', { heading: '回收站', current: 'trash' }) %>
+
+<div class="page-header">
+  <h1>🗑️ 回收站</h1>
+  <% if (notes.length > 0) { %>
+  <button class="btn btn-danger-outline" onclick="emptyTrash()">清空回收站</button>
+  <% } %>
+</div>
+
+<% if (notes.length > 0) { %>
+<div class="note-list">
+  <% notes.forEach(n => { %>
+  <div class="note-card" data-slug="<%= n.slug %>">
+    <div class="note-card-body">
+      <a href="/note/<%= encodeURIComponent(n.slug) %>" class="note-card-title"><%= n.title %>
+        <span class="badge"><%= n.type %></span>
+      </a>
+      <div class="meta">删除于 <%= new Date(n.deletedAt).toLocaleString('zh-CN') %></div>
+    </div>
+    <div class="note-card-actions">
+      <button class="btn btn-sm btn-outline" onclick="restoreNote('<%= n.slug %>')">还原</button>
+      <button class="btn btn-sm btn-danger-outline" onclick="deleteForever('<%= n.slug %>')">永久删除</button>
+    </div>
+  </div>
+  <% }) %>
+</div>
+<% } else { %>
+<div class="empty">
+  <p>回收站是空的 🎉</p>
+</div>
+<% } %>
+
+<script>
+function restoreNote(slug) {
+  fetch('/api/notes/' + slug + '/restore', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => { if (d.ok) { document.querySelector(`[data-slug="${slug}"]`).remove(); if (!document.querySelector('.note-list')) location.reload(); } });
+}
+function deleteForever(slug) {
+  if (!confirm('确定永久删除这篇笔记？无法恢复。')) return;
+  fetch('/api/trash/' + slug, { method: 'DELETE' })
+    .then(r => r.json())
+    .then(d => { if (d.ok) { document.querySelector(`[data-slug="${slug}"]`).remove(); if (!document.querySelector('.note-list')) location.reload(); } });
+}
+function emptyTrash() {
+  if (!confirm('确定清空回收站？所有笔记将被永久删除。')) return;
+  fetch('/api/trash', { method: 'DELETE' })
+    .then(r => r.json())
+    .then(d => { if (d.ok) location.reload(); });
+}
+</script>
+
+<%- include('footer') %>

@@ -30,6 +30,10 @@ function loadNotes() {
   } catch { return []; }
 }
 
+function loadActiveNotes() {
+  return loadNotes().filter(n => !n.deletedAt);
+}
+
 function saveNotes(notes) {
   fs.writeFileSync(NOTES_FILE, JSON.stringify(notes, null, 2));
 }
@@ -53,46 +57,46 @@ function highlightKeyword(text, keyword) {
 }
 
 // ---- Git auto-sync ----
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
 
-function gitSync(callback) {
+function gitExec(args) {
+  return new Promise((resolve, reject) => {
+    const child = execFile('git', args, { cwd: __dirname, timeout: 30000, maxBuffer: 1024 * 1024 },
+      (err, stdout, stderr) => {
+        if (err) reject({ err, stdout, stderr });
+        else resolve(stdout);
+      }
+    );
+    // If GIT_TOKEN is set, supply credentials via stdin (not command line)
+    if (GIT_TOKEN && args[0] === 'push') {
+      child.stdin.write(`protocol=https\nhost=github.com\nusername=${GIT_USER}\npassword=${GIT_TOKEN}\n`);
+      child.stdin.end();
+    }
+  });
+}
+
+async function gitSync() {
   if (!GIT_TOKEN) {
     console.log('[git] GIT_TOKEN not set, skip auto-sync');
-    if (callback) callback();
     return;
   }
-  const remote = `https://${GIT_TOKEN}@${GIT_REPO}`;
-  const cmds = [
-    'git add data/',
-    `git -c user.name="${GIT_USER}" -c user.email="${GIT_USER}@users.noreply.github.com" commit -m "auto: update notes"`,
-    `git push ${remote} main`
-  ];
-  const run = (i) => {
-    if (i >= cmds.length) {
-      console.log('[git] sync done');
-      if (callback) callback();
-      return;
+  try {
+    await gitExec(['add', 'data/']);
+    try {
+      await gitExec(['-c', `user.name=${GIT_USER}`, '-c', `user.email=${GIT_USER}@users.noreply.github.com`, 'commit', '-m', 'auto: update notes']);
+    } catch (e) {
+      if (e.stderr && (e.stderr.includes('nothing to commit') || e.stderr.includes('nothing added'))) {
+        console.log('[git] nothing to commit, skip');
+        return;
+      }
+      throw e;
     }
-    exec(cmds[i], { cwd: __dirname, timeout: 30000 }, (err, stdout, stderr) => {
-      if (err && i === 0 && err.message.includes('nothing to commit')) {
-        console.log('[git] nothing to commit, skip');
-        if (callback) callback();
-        return;
-      }
-      if (err && i === 0 && err.message.includes('nothing added to commit')) {
-        console.log('[git] nothing to commit, skip');
-        if (callback) callback();
-        return;
-      }
-      if (err) {
-        console.error(`[git] error: ${stderr || err.message}`);
-        if (callback) callback(err);
-        return;
-      }
-      run(i + 1);
-    });
-  };
-  run(0);
+    // Store credential via stdin helper, then push (URL without token)
+    await gitExec(['-c', 'credential.helper=', '-c', `credential.helper=!f() { echo "username=${GIT_USER}"; echo "password=${GIT_TOKEN}"; }; f`, 'push', 'origin', 'main']);
+    console.log('[git] sync done');
+  } catch (err) {
+    console.error(`[git] error: ${err.stderr || err.message}`);
+  }
 }
 
 // ---- Marked config ----
@@ -116,6 +120,14 @@ app.use('/img', express.static(UPLOADS_DIR));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+// ---- Security headers ----
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '0');
+  next();
+});
+
 // ---- Multer setup ----
 const fileUpload = multer({
   storage: multer.memoryStorage(),
@@ -136,7 +148,7 @@ const imageUpload = multer({
   }),
   limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter(req, file, cb) {
-    const allowed = ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp', '.bmp'];
+    const allowed = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
     cb(null, allowed.includes(path.extname(file.originalname).toLowerCase()));
   }
 });
@@ -168,7 +180,7 @@ function validSlug(s) {
 
 function listImages() {
   if (!fs.existsSync(UPLOADS_DIR)) return [];
-  const exts = ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp', '.bmp'];
+  const exts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
   return fs.readdirSync(UPLOADS_DIR)
     .filter(f => exts.includes(path.extname(f).toLowerCase()))
     .map(f => {
@@ -193,7 +205,7 @@ function formatSize(bytes) {
 
 app.get('/', (req, res) => {
   const editSlug = req.query.edit || '';
-  const notes = loadNotes();
+  const notes = loadActiveNotes();
   notes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
   const editNote = editSlug ? notes.find(n => n.slug === editSlug) : null;
   res.render('home', { notes, site: SITE_TITLE, current: 'home', query: '', editNote });
@@ -204,7 +216,7 @@ app.get('/search', (req, res) => {
   const timeFilter = req.query.time || '';
   const dateFrom = req.query.from || '';
   const dateTo = req.query.to || '';
-  let notes = loadNotes();
+  let notes = loadActiveNotes();
 
   // Time filter
   if (timeFilter || (dateFrom && dateTo)) {
@@ -249,7 +261,7 @@ app.get('/search', (req, res) => {
 });
 
 app.get('/note/:slug', (req, res) => {
-  const note = loadNotes().find(n => n.slug === req.params.slug);
+  const note = loadActiveNotes().find(n => n.slug === req.params.slug);
   if (!note) return res.status(404).render('404', { site: SITE_TITLE });
   res.render('note', { note, html: renderContent(note), site: SITE_TITLE, current: 'note' });
 });
@@ -266,13 +278,13 @@ app.get('/new', (req, res) => {
 });
 
 app.get('/edit/:slug', (req, res) => {
-  const note = loadNotes().find(n => n.slug === req.params.slug);
+  const note = loadActiveNotes().find(n => n.slug === req.params.slug);
   if (!note) return res.status(404).render('404', { site: SITE_TITLE });
   res.render('editor', { note, site: SITE_TITLE, current: 'editor' });
 });
 
 app.get('/list', (req, res) => {
-  const notes = loadNotes();
+  const notes = loadActiveNotes();
   notes.sort((a, b) => a.title.localeCompare(b.title, 'zh'));
   res.render('list', { notes, site: SITE_TITLE, current: 'list' });
 });
@@ -283,7 +295,7 @@ app.get('/gallery', (req, res) => {
 
 app.get('/notebook/:name', (req, res) => {
   const name = req.params.name;
-  const notes = loadNotes().filter(n => n.tags && n.tags.includes(name));
+  const notes = loadActiveNotes().filter(n => n.tags && n.tags.includes(name));
   notes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
   res.render('notebook', { notes, notebook: name, site: SITE_TITLE, current: 'notebook' });
 });
@@ -296,7 +308,7 @@ app.post('/api/notes', (req, res) => {
 
   const parsedTags = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [];
 
-  const notes = loadNotes();
+  const notes = loadActiveNotes();
   const existing = notes.find(n => n.slug === slug);
   const now = new Date().toISOString();
   if (existing) {
@@ -324,7 +336,7 @@ app.post('/api/upload-file', fileUpload.single('file'), (req, res) => {
   const type = LANG_MAP[ext] || 'txt';
 
   const done = (content) => {
-    const notes = loadNotes();
+    const notes = loadActiveNotes();
     const existing = notes.find(n => n.slug === slug);
     const now = new Date().toISOString();
     if (existing) {
@@ -386,8 +398,41 @@ app.delete('/api/images/:filename', (req, res) => {
   res.json({ ok: true });
 });
 
-// Delete note
+// ---- Trash / Soft delete ----
+
+// Soft delete: move note to trash
 app.delete('/api/notes/:slug', (req, res) => {
+  const notes = loadNotes();
+  const note = notes.find(n => n.slug === req.params.slug);
+  if (!note) return res.status(404).json({ error: 'not found' });
+  note.deletedAt = new Date().toISOString();
+  saveNotes(notes);
+  gitSync();
+  res.json({ ok: true, slug: req.params.slug });
+});
+
+// List trash
+app.get('/api/trash', (req, res) => {
+  const notes = loadNotes().filter(n => n.deletedAt)
+    .map(n => ({ slug: n.slug, title: n.title, type: n.type, deletedAt: n.deletedAt }));
+  notes.sort((a, b) => new Date(b.deletedAt) - new Date(a.deletedAt));
+  res.json(notes);
+});
+
+// Restore from trash
+app.post('/api/notes/:slug/restore', (req, res) => {
+  const notes = loadNotes();
+  const note = notes.find(n => n.slug === req.params.slug);
+  if (!note) return res.status(404).json({ error: 'not found' });
+  delete note.deletedAt;
+  note.updatedAt = new Date().toISOString();
+  saveNotes(notes);
+  gitSync();
+  res.json({ ok: true, slug: req.params.slug });
+});
+
+// Permanently delete
+app.delete('/api/trash/:slug', (req, res) => {
   const notes = loadNotes();
   const idx = notes.findIndex(n => n.slug === req.params.slug);
   if (idx === -1) return res.status(404).json({ error: 'not found' });
@@ -397,15 +442,31 @@ app.delete('/api/notes/:slug', (req, res) => {
   res.json({ ok: true });
 });
 
+// Empty trash
+app.delete('/api/trash', (req, res) => {
+  let notes = loadNotes();
+  notes = notes.filter(n => !n.deletedAt);
+  saveNotes(notes);
+  gitSync();
+  res.json({ ok: true });
+});
+
 // JSON API
 app.get('/api/notes', (req, res) => {
-  res.json(loadNotes().map(n => ({ slug: n.slug, title: n.title, type: n.type, tags: n.tags || [], updatedAt: n.updatedAt })));
+  res.json(loadActiveNotes().map(n => ({ slug: n.slug, title: n.title, type: n.type, tags: n.tags || [], updatedAt: n.updatedAt })));
+});
+
+// Trash page
+app.get('/trash', (req, res) => {
+  const notes = loadNotes().filter(n => n.deletedAt);
+  notes.sort((a, b) => new Date(b.deletedAt) - new Date(a.deletedAt));
+  res.render('trash', { notes, site: SITE_TITLE, current: 'trash' });
 });
 
 // Notebook APIs
 app.get('/api/notebooks', (req, res) => {
   const notebooks = loadNotebooks();
-  const notes = loadNotes();
+  const notes = loadActiveNotes();
   // Return notebooks with note counts
   const result = notebooks.map(name => ({
     name,
@@ -423,7 +484,7 @@ app.post('/api/notebooks', (req, res) => {
   saveNotebooks(notebooks);
   // Add tag to selected notes
   if (noteSlugs && noteSlugs.length) {
-    const allNotes = loadNotes();
+    const allNotes = loadActiveNotes();
     noteSlugs.forEach(slug => {
       const n = allNotes.find(x => x.slug === slug);
       if (n) {
@@ -446,7 +507,7 @@ app.get('/api/next-name', (req, res) => {
     while (notebooks.includes('新建笔记本' + num)) num++;
     res.json({ name: '新建笔记本' + num });
   } else {
-    const notes = loadNotes();
+    const notes = loadActiveNotes();
     let num = 1;
     while (notes.some(n => n.title === '新建笔记' + num)) num++;
     res.json({ name: '新建笔记' + num });
@@ -524,6 +585,45 @@ app.post('/api/render', (req, res) => {
 app.use((req, res) => res.status(404).render('404', { site: SITE_TITLE, current: '404' }));
 
 // ---- Start ----
-app.listen(PORT, () => {
-  console.log(`Notes site: http://localhost:${PORT}`);
-});
+const os = require('os');
+const IS_ELECTRON = process.env.ELECTRON_RUN || false;
+
+function getLocalIP() {
+  const nets = os.networkInterfaces();
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name]) {
+      if (net.family === 'IPv4' && !net.internal) return net.address;
+    }
+  }
+  return '0.0.0.0';
+}
+
+let serverInstance = null;
+let serverPort = PORT;
+
+function startServer() {
+  return new Promise((resolve, reject) => {
+    try {
+      serverInstance = app.listen(PORT, '0.0.0.0', () => {
+        serverPort = serverInstance.address().port;
+        const localIP = getLocalIP();
+        console.log(`Notes site 本地: http://localhost:${serverPort}`);
+        console.log(`局域网访问:   http://${localIP}:${serverPort}`);
+        resolve(serverInstance);
+      });
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+function getPort() { return serverPort; }
+
+// 直接运行（网页模式）时自动启动，Electron 模式下由 Electron 调用 startServer
+if (!IS_ELECTRON) {
+  (async () => {
+    await startServer();
+  })();
+}
+
+module.exports = { app, startServer, getPort };
