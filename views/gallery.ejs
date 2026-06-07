@@ -9,6 +9,11 @@
 </div>
 
 <div id="upload-progress" class="result"></div>
+<div id="gallery-drop-zone" class="gallery-drop-zone">
+  <div style="font-size:2.5rem;margin-bottom:8px">📂</div>
+  <div style="color:var(--accent);font-weight:600">拖拽图片到此处</div>
+  <div style="color:var(--muted);font-size:.82rem;margin-top:4px">支持 JPG / PNG / GIF / WebP / BMP</div>
+</div>
 
 <% if (images.length === 0) { %>
 <div class="empty"><p>还没有图片，点击"上传图片"开始添加。</p></div>
@@ -119,6 +124,21 @@ async function delImage(filename, event) {
     alert('删除失败：' + err.message);
   }
 }
+
+// Drag-drop support
+(function() {
+  var zone = document.getElementById('gallery-drop-zone');
+  document.addEventListener('dragenter', function(e) { e.preventDefault(); zone.style.display = 'block'; });
+  document.addEventListener('dragover', function(e) { e.preventDefault(); zone.style.display = 'block'; });
+  document.addEventListener('dragleave', function(e) { e.preventDefault(); zone.style.display = 'none'; });
+  zone.addEventListener('drop', function(e) {
+    e.preventDefault();
+    zone.style.display = 'none';
+    var files = e.dataTransfer.files;
+    if (files.length) { document.getElementById('gallery-upload-input').files = files; document.getElementById('gallery-upload-input').dispatchEvent(new Event('change')); }
+  });
+  zone.addEventListener('click', function() { document.getElementById('gallery-upload-input').click(); });
+})();
 
 document.getElementById('gallery-upload-input').addEventListener('change', async function() {
   const files = this.files;

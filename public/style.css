@@ -835,6 +835,44 @@ pre.plain {
 .result.error { color: #dc2626; }
 
 /* ---- Gallery ---- */
+.gallery-drop-zone {
+  border: 2px dashed var(--accent);
+  border-radius: 12px;
+  padding: 40px;
+  text-align: center;
+  margin-bottom: 24px;
+  background: var(--card-bg);
+  cursor: pointer;
+  transition: all .2s;
+}
+.gallery-drop-zone:hover,
+.gallery-drop-zone.dragover {
+  background: #eef2ff;
+  border-color: var(--accent-hover);
+}
+html.dark .gallery-drop-zone:hover,
+html.dark .gallery-drop-zone.dragover {
+  background: #1e293b;
+}
+
+.gallery-drop-zone {
+  display: none;
+  border: 2px dashed var(--accent);
+  border-radius: 12px;
+  padding: 40px;
+  text-align: center;
+  margin-bottom: 24px;
+  background: var(--card-bg);
+  cursor: pointer;
+  transition: all .2s;
+}
+.gallery-drop-zone:hover {
+  background: #eef2ff;
+}
+html.dark .gallery-drop-zone:hover {
+  background: #1e293b;
+}
+
 .gallery-toolbar {
   display: flex;
   align-items: center;

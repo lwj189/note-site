@@ -1,6 +1,13 @@
 <%- include('header', { heading: '搜索', current: typeof current !== 'undefined' ? current : 'search' }) %>
 
 <div class="search-header">
+  <h1>搜索</h1>
+  <div class="search-bar" style="margin-bottom:20px">
+    <form action="/search" method="get" style="display:flex;gap:10px;width:100%;max-width:600px">
+      <input type="text" name="q" value="<%= typeof query !== 'undefined' ? query : '' %>" placeholder="搜索笔记..." style="flex:1;padding:10px 16px;border:1.5px solid var(--border);border-radius:8px;font-size:.95rem;outline:none;font-family:inherit">
+      <button type="submit" style="padding:10px 20px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer">搜索</button>
+    </form>
+  </div>
   <h1>搜索结果</h1>
   <% if (query) { %>
   <p>搜索 "<strong><%= query %></strong>"：
@@ -51,6 +58,7 @@
           <a href="/note/<%= encodeURIComponent(n.slug) %>" class="note-card-link">
             <h3><%- highlightKeyword(n.title, query) %></h3>
             <div class="meta"><%= new Date(n.updatedAt).toLocaleString('zh-CN') %> &middot; /note/<%= n.slug %></div>
+            <div class="preview"><%- highlightKeyword(n.content.replace(/[#*`\[\]!>]/g, '').substring(0, 120), query) %></div>
           </a>
           <div class="card-actions card-actions-inline">
             <a href="/edit/<%= encodeURIComponent(n.slug) %>" class="card-action-btn card-edit" title="编辑" onclick="event.stopPropagation()">
