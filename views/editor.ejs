@@ -58,7 +58,7 @@
       </div>
     </div>
 
-    <div class="editor-area">
+    <div class="editor-area" id="editor-area">
       <textarea name="content" id="e-content" placeholder="在此撰写内容...&#10;&#10;支持 Markdown 语法" required><%= typeof note !== 'undefined' ? note.content : '' %></textarea>
       <div id="e-preview" class="editor-preview note-body" style="display:none"></div>
     </div>
@@ -127,6 +127,8 @@ const LANG_MAP = {
 
 const textarea = document.getElementById('e-content');
 let previewVisible = false;
+let splitMode = false;
+let livePreviewTimer = null;
 let galleryImages = [];
 let pickerOpen = false;
 let selectedImages = new Set();
@@ -382,20 +384,62 @@ async function renderPreview() {
 }
 
 async function togglePreview() {
-  previewVisible = !previewVisible;
-  const preview = document.getElementById('e-preview');
-  const btn = document.getElementById('tb-preview-btn');
-  if (previewVisible) {
-    btn.classList.add('active');
-    textarea.style.display = 'none';
-    preview.style.display = 'block';
-    await renderPreview();
-  } else {
+  if (splitMode) {
+    // Exit split mode → back to textarea only
+    splitMode = false;
+    previewVisible = false;
+    const preview = document.getElementById('e-preview');
+    const btn = document.getElementById('tb-preview-btn');
     btn.classList.remove('active');
+    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> 预览';
     textarea.style.display = '';
     preview.style.display = 'none';
+    document.getElementById('editor-area').classList.remove('split');
+    return;
+  }
+
+  if (!previewVisible) {
+    // Enter preview mode
+    previewVisible = true;
+    const preview = document.getElementById('e-preview');
+    const btn = document.getElementById('tb-preview-btn');
+    btn.classList.add('active');
+    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> 分屏';
+    textarea.style.display = '';
+    preview.style.display = '';
+    document.getElementById('editor-area').classList.add('split');
+    splitMode = true;
+    await renderPreview();
+  } else {
+    // Toggle from preview-only to split mode is now handled above
+    previewVisible = false;
+    splitMode = false;
+    const preview = document.getElementById('e-preview');
+    const btn = document.getElementById('tb-preview-btn');
+    btn.classList.remove('active');
+    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> 预览';
+    preview.style.display = 'none';
+    document.getElementById('editor-area').classList.remove('split');
   }
 }
+
+// Live preview update in split mode
+textarea.addEventListener('input', function() {
+  if (!splitMode) return;
+  if (livePreviewTimer) clearTimeout(livePreviewTimer);
+  livePreviewTimer = setTimeout(renderPreview, 400);
+});
+
+// Auto-split on load if content has images
+(function() {
+  var content = textarea.value;
+  if (/!\[.*?\]\(.*?\)|<img\s+[^>]*src=/i.test(content)) {
+    // Automatically enter split mode
+    setTimeout(function() {
+      document.getElementById('tb-preview-btn').click();
+    }, 100);
+  }
+})();
 
 // ---- Image floating size toolbar ----
 var activeImgToolbar = null;

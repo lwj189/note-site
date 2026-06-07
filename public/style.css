@@ -1185,6 +1185,30 @@ pre.plain {
 .editor-field select:focus { border-color: var(--accent); }
 
 .editor-area { position: relative; }
+.editor-area.split {
+  display: flex;
+  gap: 0;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  min-height: 520px;
+}
+.editor-area.split textarea {
+  width: 50%;
+  border-right: 1px solid var(--border);
+  resize: horizontal;
+  position: relative;
+  border-radius: 0;
+}
+.editor-area.split .editor-preview {
+  display: block !important;
+  width: 50%;
+  padding: 20px 24px;
+  overflow-y: auto;
+  background: var(--bg);
+}
+.editor-area.split textarea:focus { border-color: transparent; box-shadow: none; }
+.editor-area textarea { position: relative; }
 .editor-page textarea {
   width: 100%;
   min-height: 520px;
