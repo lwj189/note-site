@@ -1,3 +1,5 @@
+<button id="scroll-top-btn" class="scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="返回顶部">↑</button>
+
 </main>
 </div><!-- .app-layout -->
 <script src="/app.js"></script>
@@ -11,6 +13,16 @@ if (window.electronAPI && window.electronAPI.isElectron) {
     badge.style.color = '#fff';
   }
 }
+
+// 返回顶部按钮
+(function() {
+  var btn = document.getElementById('scroll-top-btn');
+  if (!btn) return;
+  window.addEventListener('scroll', function() {
+    btn.style.display = window.scrollY > 300 ? 'flex' : 'none';
+  });
+  btn.style.display = 'none';
+})();
 </script>
 </body>
 </html>

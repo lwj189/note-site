@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const multer = require('multer');
 const { marked } = require('marked');
 const hljs = require('highlight.js');
@@ -23,30 +23,51 @@ const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
 });
 
 // ---- Data helpers ----
-function loadNotes() {
+// ---- Data helpers (cached) ----
+let notesCache = null;
+let notebooksCache = null;
+let flushTimer = null;
+
+function initCache() {
   try {
-    if (!fs.existsSync(NOTES_FILE)) return [];
-    return JSON.parse(fs.readFileSync(NOTES_FILE, 'utf-8'));
-  } catch { return []; }
+    if (!fs.existsSync(NOTES_FILE)) notesCache = [];
+    else notesCache = JSON.parse(fs.readFileSync(NOTES_FILE, 'utf-8'));
+  } catch { notesCache = []; }
+  try {
+    if (!fs.existsSync(NOTEBOOKS_FILE)) notebooksCache = [];
+    else notebooksCache = JSON.parse(fs.readFileSync(NOTEBOOKS_FILE, 'utf-8'));
+  } catch { notebooksCache = []; }
 }
+initCache();
+
+function loadNotes() { return notesCache; }
 
 function loadActiveNotes() {
-  return loadNotes().filter(n => !n.deletedAt);
+  return notesCache.filter(n => !n.deletedAt);
 }
 
 function saveNotes(notes) {
-  fs.writeFileSync(NOTES_FILE, JSON.stringify(notes, null, 2));
+  notesCache = notes;
+  scheduleFlush();
 }
 
-function loadNotebooks() {
-  try {
-    if (!fs.existsSync(NOTEBOOKS_FILE)) return [];
-    return JSON.parse(fs.readFileSync(NOTEBOOKS_FILE, 'utf-8'));
-  } catch { return []; }
-}
+function loadNotebooks() { return notebooksCache; }
 
 function saveNotebooks(notebooks) {
-  fs.writeFileSync(NOTEBOOKS_FILE, JSON.stringify(notebooks, null, 2));
+  notebooksCache = notebooks;
+  scheduleFlush();
+}
+
+function scheduleFlush() {
+  if (flushTimer) clearTimeout(flushTimer);
+  flushTimer = setTimeout(() => {
+    try {
+      fs.writeFileSync(NOTES_FILE, JSON.stringify(notesCache, null, 2));
+      fs.writeFileSync(NOTEBOOKS_FILE, JSON.stringify(notebooksCache, null, 2));
+    } catch (err) {
+      console.error('[cache] write error:', err.message);
+    }
+  }, 500);
 }
 
 function highlightKeyword(text, keyword) {
@@ -73,6 +94,17 @@ function gitExec(args) {
       child.stdin.end();
     }
   });
+}
+
+let gitDebounceTimer = null;
+
+function debouncedGitSync() {
+  if (!GIT_TOKEN) return;
+  if (gitDebounceTimer) clearTimeout(gitDebounceTimer);
+  gitDebounceTimer = setTimeout(() => {
+    gitDebounceTimer = null;
+    gitSync();
+  }, 10000);
 }
 
 async function gitSync() {
@@ -321,7 +353,7 @@ app.post('/api/notes', (req, res) => {
     notes.push({ id: crypto.randomBytes(8).toString('hex'), slug, title, content, type: type || 'md', tags: parsedTags, createdAt: now, updatedAt: now });
   }
   saveNotes(notes);
-  gitSync();
+  debouncedGitSync();
   res.json({ ok: true, slug });
 });
 
@@ -345,7 +377,7 @@ app.post('/api/upload-file', fileUpload.single('file'), (req, res) => {
       notes.push({ id: crypto.randomBytes(8).toString('hex'), slug, title, content, type, createdAt: now, updatedAt: now });
     }
     saveNotes(notes);
-    gitSync();
+    debouncedGitSync();
     res.json({ ok: true, slug, title });
   };
 
@@ -373,14 +405,14 @@ app.post('/api/parse-docx', docxUpload.single('file'), (req, res) => {
 app.post('/api/upload-image', imageUpload.single('image'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: '请选择图片' });
   const url = '/img/' + req.file.filename;
-  gitSync();
+  debouncedGitSync();
   res.json({ ok: true, url, md: '![' + (req.body.alt || 'image') + '](' + url + ')' });
 });
 
 // Multi image upload
 app.post('/api/upload-images', imageUpload.array('images', 10), (req, res) => {
   if (!req.files || req.files.length === 0) return res.status(400).json({ error: '请选择图片' });
-  gitSync();
+  debouncedGitSync();
   res.json({ ok: true, count: req.files.length });
 });
 
@@ -394,7 +426,7 @@ app.delete('/api/images/:filename', (req, res) => {
   const filepath = path.join(UPLOADS_DIR, path.basename(req.params.filename));
   if (!fs.existsSync(filepath)) return res.status(404).json({ error: 'not found' });
   fs.unlinkSync(filepath);
-  gitSync();
+  debouncedGitSync();
   res.json({ ok: true });
 });
 
@@ -407,7 +439,7 @@ app.delete('/api/notes/:slug', (req, res) => {
   if (!note) return res.status(404).json({ error: 'not found' });
   note.deletedAt = new Date().toISOString();
   saveNotes(notes);
-  gitSync();
+  debouncedGitSync();
   res.json({ ok: true, slug: req.params.slug });
 });
 
@@ -427,7 +459,7 @@ app.post('/api/notes/:slug/restore', (req, res) => {
   delete note.deletedAt;
   note.updatedAt = new Date().toISOString();
   saveNotes(notes);
-  gitSync();
+  debouncedGitSync();
   res.json({ ok: true, slug: req.params.slug });
 });
 
@@ -438,7 +470,7 @@ app.delete('/api/trash/:slug', (req, res) => {
   if (idx === -1) return res.status(404).json({ error: 'not found' });
   notes.splice(idx, 1);
   saveNotes(notes);
-  gitSync();
+  debouncedGitSync();
   res.json({ ok: true });
 });
 
@@ -447,7 +479,7 @@ app.delete('/api/trash', (req, res) => {
   let notes = loadNotes();
   notes = notes.filter(n => !n.deletedAt);
   saveNotes(notes);
-  gitSync();
+  debouncedGitSync();
   res.json({ ok: true });
 });
 
@@ -493,7 +525,7 @@ app.post('/api/notebooks', (req, res) => {
       }
     });
     saveNotes(allNotes);
-    gitSync();
+    debouncedGitSync();
   }
   res.json({ ok: true, name: name.trim() });
 });
@@ -543,7 +575,7 @@ app.put('/api/notebooks/:name', (req, res) => {
   saveNotes(notes);
   notebooks[idx] = newName.trim();
   saveNotebooks(notebooks);
-  gitSync();
+  debouncedGitSync();
   res.json({ ok: true, name: newName.trim() });
 });
 
