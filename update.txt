@@ -1,228 +1,28 @@
 更新日志：
-文件 | 改动（第一次）
-views/gallery.ejs | 新建 — 网格展示图片缩略图，点击弹出 Lightbox 显示大图 + Markdown/URL/HTML 引用（可一键复制），每张图片悬浮显示删除按钮
-views/home.ejs | 图片上传标签页改为多选上传，完成后链接到图库
-views/header.ejs | 导航栏新增"图库"入口
-server.js | 新增 4 个路由：/gallery 页面、/api/images 列表、/api/upload-images 多文件上传（最多 10 张）、/api/images/:filename 删除
-public/style.css | 新增图库网格、Lightbox 弹出层、悬浮删除按钮等样式
-views/home.ejs 新增可折叠管理面板（<details>），包含撰写笔记、上传文件、上传图片、笔记列表 4个标签页，笔记列表在下方展示
-server.js / 路由支持 ?edit= 参数；旧上传路由改为 302 重定向到 /
-public/style.css 新增管理面板折叠按钮样式
-文件 | 改动（第二次）
-两项修改已完成，以下是改动摘要：
 
-  1. 移除首页管理面板的图片上传功能
+## 安全修复 + 回收站 + 文档整理
 
-  - views/home.ejs：删除了"上传图片"tab 按钮、tab 面板以及对应的 JS 提交处理逻辑
-  - 图片上传统一在图库页面（/gallery）进行，避免功能重复
+### 安全（🔴）
+1. **禁用 SVG 上传** — 移除 imageUpload 中 .svg 扩展名，防止嵌入 XSS 脚本
+2. **安全响应头** — 添加 X-Content-Type-Options: nosniff、X-Frame-Options: DENY
+3. **Git 令牌安全** — 改用 execFile + stdin 凭证传递，令牌不再出现在命令行参数中
 
-  2. 专用编辑页面
+### 回收站（🗑️）
+4. **软删除** — DELETE /api/notes/:slug 改为标记 deletedAt 字段，非真正删除
+5. **回收站页面** — 新增 GET /trash 页面，列出已删除笔记
+6. **还原** — POST /api/notes/:slug/restore 恢复笔记
+7. **永久删除** — DELETE /api/trash/:slug 彻底删除
+8. **清空回收站** — DELETE /api/trash 一键清空
+9. **侧边栏** — 添加"回收站"红色导航入口
+10. **视图过滤** — 常规路由使用 loadActiveNotes() 自动过滤已删除笔记
 
-  - server.js:203-207：新增 GET /edit/:slug 路由
-  - views/edit.ejs（新建）：独立的编辑页面，包含：
-    - 标题、网址路径、类型三个字段横向排列
-    - 500px 最小高度的大文本编辑区，使用等宽字体
-    - 保存 / 预览 / 取消 三个操作按钮
-  - views/home.ejs：笔记列表中的"编辑"链接改为指向 /edit/:slug
-  - public/style.css：新增编辑页面的响应式样式
+### 文档整理
+11. **README.md** — 新建，合并 网站信息.md + 部署指南.md 内容
+12. **删除** — 网站信息.md、部署指南.md（已合并到 README.md）
 
-  现在的操作流程：首页 → 管理笔记 → 笔记列表 → 点击"编辑" → 进入专用大屏编辑页面。首页的"撰写笔记"tab
-  仍然保留用于快速创建新笔记。
-架构变化
-
-  删除了首页管理面板中的 3 个 tabs（撰写笔记、上传文件、上传图片），改为：
-  - 一个 "+ 新建笔记" 按钮，指向 /new
-  - 一个简洁的笔记管理列表（查看 / 编辑 / 删除）
-
-  新建了统一的编辑器页面 (/new 和 /edit/:slug 共用 editor.ejs)，类似 Word 风格：
-文件 | 改动（第三次）
-  编辑器功能
-
-  工具栏（编辑区上方）：
-  - 插入图片 — 点击后选择图片文件，自动上传到图库，生成 ![描述](/img/...) 插入光标位置
-  - 插入文件 — 选择文本/代码文件，自动读取内容并按扩展名添加代码围栏（如 .py → ```python ... ```），插入光标位置
-  - 预览 — 可切换实时预览当前 Markdown 效果
-
-  编辑区：
-  - 标题、网址路径、类型三栏横向排列
-  - 520px 大文本编辑区，等宽字体
-  - 支持 Ctrl+S 快捷键保存
-  - 保存 / 返回首页按钮
-
-  涉及文件
-
-  文件 操作
-views/editor.ejs 新建 — 统一编辑器
-views/edit.ejs 删除（被 editor.ejs 替代）
-views/home.ejs 精简管理面板
-server.js 新增 /new 路由，更新 /edit/:slug
-public/style.css 更新编辑器/工具栏样式
-
-文件 | 改动  四
-所有改动完成。以下是本次改动的总结：
-
-  ---
-  改动总结
-
-  删除
-
-  - views/upload.ejs — 已合并到 editor.ejs，不再需要
-  - server.js — 删除 UPLOAD_SECRET 常量和 /upload-* 重定向路由
-
-  重写
-
-  - views/header.ejs — 从顶部导航栏改为左侧固定侧边栏（260px），包含：
-    - "✦ MyNote" Logo（渐变色文字 + 脉冲动画）
-    - 搜索框（带放大镜图标，提交到 /search）
-    - 3 个彩色导航卡片：首页（蓝）、全部笔记（绿）、图库（紫）
-    - "+ 新建笔记" 按钮
-    - 最近笔记列表（JS 动态加载，最多 8 条）
-    - 底部版权
-  - views/footer.ejs — 简化为闭合标签 + 加载 app.js
-  - public/style.css — 全面重构为 sidebar 布局
-
-  修改
-
-  - views/home.ejs — 删除搜索框和管理面板，改为欢迎 Hero + 最近笔记网格
-  - views/list.ejs — 增加页面标题头
-  - views/search.ejs — 删除搜索框（sidebar 已有），只保留结果展示
-  - 所有视图 — 传递 current 变量实现导航高亮
-  - server.js — 所有路由传递 current 变量，SITE_TITLE 改为 "MyNote"
-  - public/app.js — 新增：侧边栏最近笔记 AJAX 加载
-
-  导航配色
-
-  ┌──────────┬──────┬─────────┐
-  │   页面   │ 颜色 │  色值   │
-  ├──────────┼──────┼─────────┤
-  │ 首页     │ 蓝色 │ #4361ee │
-  ├──────────┼──────┼─────────┤
-  │ 全部笔记 │ 绿色 │ #16a34a │
-  ├──────────┼──────┼─────────┤
-  │ 图库     │ 紫色 │ #7c3aed │
-  └──────────┴──────┴─────────┘
-
-  响应式
-
-  - 768px 以下：sidebar 变为顶部横栏，导航卡片横排，最近笔记隐藏
-
-文件 | 改动 五
-笔记卡片 hover 显示编辑/删除按钮
-
-- views/home.ejs — 最近笔记卡片改为容器结构，hover 时右上角显示编辑(✏️)和删除(🗑️)图标按钮
-- views/list.ejs — 全部笔记卡片改为 flex 布局，hover 时右侧显示编辑和删除图标按钮
-- public/app.js — 新增 delNoteCard(slug) 函数，支持卡片动画消散效果
-- public/style.css — 新增 .card-actions / .card-action-btn 样式，按钮默认透明 hover 显示
-
-文件 | 改动 六
-编辑器预览真实渲染 + 笔记页编辑/删除按钮
-
-- server.js — 新增 POST /api/render 接口，使用 marked 库将 Markdown 渲染为 HTML
-- views/editor.ejs — 预览功能改为调用 /api/render 获取真实渲染结果，图片可直接显示而非 Markdown 语法；插入图片后自动切换到预览模式
-- views/note.ejs — 标题右侧添加编辑和删除按钮，与标题等高排列
-- public/style.css — 新增 .note-header flex 布局、预览加载/空状态样式
-
-文件 | 改动 七
-笔记本/标签系统 + 搜索增强
-
-数据模型
-- notes.json 新增 tags 字段（字符串数组），标签即分类，笔记打标签后自动归入同名笔记本
-- 新增 data/notebooks.json 存储笔记本列表
-
-API 新增
-- GET /api/notebooks — 返回笔记本列表及笔记数量
-- POST /api/notebooks — 创建笔记本
-- DELETE /api/notebooks/:name — 删除笔记本
-- GET /notebook/:name — 笔记本页面，显示该标签下的所有笔记
-- POST /api/notes 新增 tags 参数支持
-
-搜索增强
-- 结果分区：标题匹配优先展示，内容匹配其次
-- 关键词高亮：匹配文字用 <mark> 标签包裹（黄色背景）
-- 时间筛选：任意时间/今天/最近7天/最近30天/自定义（精确到分钟）
-
-UI 变更
-- views/header.ejs — 侧边栏新增"笔记本"区域，显示笔记本列表及笔记数量，支持新建笔记本
-- views/editor.ejs — 类型选择下方新增标签输入框（逗号分隔）
-- views/home.ejs / views/list.ejs — 笔记卡片显示标签徽章，可点击跳转笔记本
-- views/note.ejs — 标题下方显示标签列表
-- views/notebook.ejs — 新建笔记本页面
-- views/search.ejs — 重写，支持结果分区、关键词高亮、时间筛选
-- public/app.js — 侧边栏加载笔记本列表、新建笔记本对话框
-- public/style.css — 笔记本卡片琥珀色系、标签徽章、搜索高亮、时间筛选样式
-
-文件 | 改动 八
-笔记本编辑/删除 + 设置面板 + 暗色主题
-
-笔记本管理
-- 侧边栏笔记本项目 hover 时显示编辑(重命名)和删除按钮
-- 重命名笔记本时自动更新所有相关笔记的标签
-- 删除笔记本时提供选项：1) 移除笔记标签（将笔记移出笔记本）2) 仅删除笔记本，有笔记时提示警告
-- 服务器新增 PUT /api/notebooks/:name 重命名接口
-- DELETE /api/notebooks/:name 支持 ?action=untag 参数
-
-设置面板
-- 左下角 © 左侧新增齿轮设置图标按钮
-- 设置选项（存储在 localStorage）：
-  - 深色/浅色主题切换（完整暗色主题 CSS 变量覆盖）
-  - 字体大小调节（小/中/大三档，通过 --font-scale CSS 变量）
-  - Git 自动同步开关
-  - 首页笔记排序方式（更新时间/创建时间/字母顺序）
-- 侧边栏最近笔记和首页排序联动排序设置
-
-涉及文件
-- server.js — 新增 PUT 笔记本路由，DELETE 增强
-- views/header.ejs — 设置按钮 + 侧边栏底部重构
-- public/app.js — 设置面板、笔记本编辑/删除、主题/字体应用
-- public/style.css — 暗色主题变量、设置模态框、笔记本操作按钮样式
-
-文件 | 改动 九
-新建笔记/笔记本模态框 + 自动命名 + 元数据设置按钮
-
-新建笔记
-- 点击"新建笔记"弹出模态框，可填写标题/网址/类型/标签
-- "先写内容"选项 → 进入编辑器先写内容，保存时自动生成标题"新建笔记N"
-- 自动检测代码块语言作为类型，标题自增编号
-- 编辑器支持 quick 模式（隐藏元数据字段，保存时自动生成）
-
-新建笔记本
-- 点击"+"弹出模态框，填写名称 + 可选添加已有笔记（复选框列表）
-- "直接创建"选项 → 自动以"新建笔记本N"命名创建
-- 创建时可选择已有笔记加入笔记本（自动打标签）
-
-元数据设置按钮
-- 笔记页面：编辑/删除旁新增"设置"齿轮按钮 → 弹窗编辑标题/类型/标签
-- 笔记本页面：标题右侧新增"设置"按钮 → 弹窗重命名笔记本
-- 重命名笔记本时自动更新关联笔记的标签名
-
-API 新增
-- GET /api/next-name?type=note|notebook — 返回下一个自动名称
-- POST /api/notebooks 新增 notes 参数，支持创建时批量添加笔记标签
-- GET /new 支持 ?title=&slug=&type=&tags= 预填参数，支持 ?quick=1 快速模式
-
-涉及文件
-- server.js — 新增 /api/next-name，更新 /new 和 /api/notebooks 路由
-- views/header.ejs — "新建笔记"按钮改为触发模态框
-- views/editor.ejs — 支持预填参数和 quick 模式自动生成元数据
-- views/note.ejs — 新增"设置"按钮和元数据编辑模态框
-- views/notebook.ejs — 新增"设置"按钮和笔记本重命名模态框
-- public/app.js — showNewNote/submitNewNote/quickCreateNote 模态框函数
-- public/style.css — 模态框表单字段样式
-
-文件 | 改动 十
-图片交互增强：只读灯箱 + 编辑器缩放
-
-只读灯箱
-- 笔记页面图片可点击放大查看，弹出全屏灯箱（黑色半透明背景）
-- 图片光标显示 zoom-in，点击外部或关闭按钮退出
-
-编辑器缩放
-- 预览模式下图片可通过右下角拖拽手柄调整显示宽度
-- hover 时显示蓝色虚线边框 + 蓝色拖拽角标
-- 拖拽后自动将 Markdown 图片语法转为带 width 的 HTML 标签
-- 使用 ResizeObserver 实时同步尺寸到源码
-
-涉及文件
-- views/note.ejs — 图片点击灯箱 JS + HTML
-- views/editor.ejs — 预览图片 ResizeObserver 缩放逻辑
-- public/style.css — 灯箱样式、编辑器缩放手柄样式
+### 涉及文件
+- server.js — 回收站 API、安全头、Git 安全重构
+- views/trash.ejs — 新建回收站页面
+- views/header.ejs — 侧边栏回收站入口
+- public/style.css — 回收站样式、红色导航卡
+- README.md — 新建
