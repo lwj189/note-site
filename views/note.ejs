@@ -33,26 +33,104 @@
 
 <a href="/" class="back">&larr; 返回首页</a>
 
-<!-- Image lightbox -->
-<div id="img-lightbox" class="img-lightbox" onclick="closeImgLightbox()">
-  <span class="img-lightbox-close">&times;</span>
-  <img id="img-lightbox-img" src="" alt="">
+<!-- Image lightbox with zoom -->
+<div id="img-lightbox" class="img-lightbox" onclick="closeImgLightbox(event)">
+  <span class="img-lightbox-close" onclick="closeImgLightbox()">&times;</span>
+  <div class="img-lightbox-inner" id="img-lightbox-inner">
+    <img id="img-lightbox-img" src="" alt="">
+    <div class="img-lightbox-zoom-info" id="img-zoom-info">100%</div>
+  </div>
+  <div class="img-lightbox-toolbar">
+    <button class="img-zoom-btn" onclick="zoomImg(-0.25)" title="缩小">−</button>
+    <span class="img-zoom-level" id="img-zoom-level">100%</span>
+    <button class="img-zoom-btn" onclick="zoomImg(0.25)" title="放大">+</button>
+    <button class="img-zoom-btn" onclick="resetZoom()" title="重置">⟲</button>
+  </div>
 </div>
 
 <script>
-// Image click-to-view
+// Image lightbox with zoom & pan
+var imgZoom = 1;
+var imgPanX = 0, imgPanY = 0;
+var isPanning = false;
+var panStartX, panStartY;
+
 (function() {
   document.querySelectorAll('.note-body img').forEach(function(img) {
     img.style.cursor = 'zoom-in';
     img.addEventListener('click', function() {
-      document.getElementById('img-lightbox-img').src = this.src;
-      document.getElementById('img-lightbox').classList.add('active');
+      openImgLightbox(this.src);
     });
   });
 })();
-function closeImgLightbox() {
+
+function openImgLightbox(src) {
+  imgZoom = 1;
+  imgPanX = 0;
+  imgPanY = 0;
+  applyZoom();
+  document.getElementById('img-lightbox-img').src = src;
+  document.getElementById('img-lightbox').classList.add('active');
+}
+
+function closeImgLightbox(e) {
+  if (e && e.target !== document.getElementById('img-lightbox')) return;
   document.getElementById('img-lightbox').classList.remove('active');
 }
+
+// Mouse wheel zoom
+document.getElementById('img-lightbox').addEventListener('wheel', function(e) {
+  if (!document.getElementById('img-lightbox').classList.contains('active')) return;
+  e.preventDefault();
+  var delta = e.deltaY > 0 ? -0.1 : 0.1;
+  zoomImg(delta);
+}, { passive: false });
+
+function zoomImg(delta) {
+  imgZoom = Math.max(0.5, Math.min(5, imgZoom + delta));
+  applyZoom();
+}
+
+function applyZoom() {
+  var img = document.getElementById('img-lightbox-img');
+  var info = document.getElementById('img-zoom-info');
+  var level = document.getElementById('img-zoom-level');
+  img.style.transform = 'scale(' + imgZoom + ') translate(' + imgPanX + 'px, ' + imgPanY + 'px)';
+  var pct = Math.round(imgZoom * 100) + '%';
+  info.textContent = pct;
+  level.textContent = pct;
+}
+
+function resetZoom() {
+  imgZoom = 1;
+  imgPanX = 0;
+  imgPanY = 0;
+  applyZoom();
+}
+
+// Pan: drag image when zoomed
+(function() {
+  var inner = document.getElementById('img-lightbox-inner');
+  inner.addEventListener('mousedown', function(e) {
+    if (imgZoom <= 1) return;
+    isPanning = true;
+    panStartX = e.clientX - imgPanX;
+    panStartY = e.clientY - imgPanY;
+    inner.style.cursor = 'grabbing';
+  });
+  document.addEventListener('mousemove', function(e) {
+    if (!isPanning) return;
+    imgPanX = e.clientX - panStartX;
+    imgPanY = e.clientY - panStartY;
+    applyZoom();
+  });
+  document.addEventListener('mouseup', function() {
+    isPanning = false;
+    if (inner) inner.style.cursor = imgZoom > 1 ? 'grab' : '';
+  });
+  // Double-click to reset
+  inner.addEventListener('dblclick', resetZoom);
+})();
 </script>
 
 <script>
