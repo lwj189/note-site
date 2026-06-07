@@ -1,3 +1,106 @@
+<本次更新记录写在下方，历史记录已按时间顺序整理到上方>
+
+## 改动一：图库系统
+
+- views/gallery.ejs — 新建，网格展示图片缩略图，点击弹出 Lightbox 显示大图 + Markdown/URL/HTML 引用（可一键复制），每张图片悬浮显示删除按钮
+- views/home.ejs — 图片上传标签页改为多选上传，完成后链接到图库
+- views/header.ejs — 导航栏新增"图库"入口
+- server.js — 新增 4 个路由：/gallery 页面、/api/images 列表、/api/upload-images 多文件上传（最多 10 张）、/api/images/:filename 删除
+- public/style.css — 新增图库网格、Lightbox 弹出层、悬浮删除按钮等样式
+- views/home.ejs — 新增可折叠管理面板（<details>），包含撰写笔记、上传文件、上传图片、笔记列表 4 个标签页，笔记列表在下方展示
+- server.js — 路由支持 ?edit= 参数；旧上传路由改为 302 重定向到 /
+- public/style.css — 新增管理面板折叠按钮样式
+
+## 改动二：编辑器独立 + 管理面板精简
+
+1. 移除首页管理面板的图片上传功能
+   - views/home.ejs — 删除了"上传图片"tab 按钮、tab 面板及对应 JS
+   - 图片上传统一在图库页面进行
+2. 专用编辑页面
+   - server.js — 新增 GET /edit/:slug 路由
+   - views/edit.ejs — 新建独立编辑页面
+   - views/home.ejs — 编辑链接指向 /edit/:slug
+   - public/style.css — 编辑页响应式样式
+
+## 改动三：统一编辑器（Word 风格）
+
+架构调整
+- 删除首页管理面板的 3 个 tabs，改为：
+  - 一个 "+ 新建笔记" 按钮，指向 /new
+  - 简洁的笔记管理列表（查看 / 编辑 / 删除）
+- 新建统一编辑器页面（/new 和 /edit/:slug 共用 editor.ejs）
+
+编辑器功能
+- 工具栏：插入图片、插入文件（自动识别代码语言加围栏）、预览
+- 编辑区：标题/网址路径/类型三栏、520px 大编辑区、Ctrl+S 保存
+
+涉及文件
+- views/editor.ejs — 新建统一编辑器
+- views/edit.ejs — 删除
+- views/home.ejs — 精简管理面板
+- server.js — 新增 /new 路由，更新 /edit/:slug
+- public/style.css — 更新编辑器/工具栏样式
+
+## 改动四：侧边栏重构
+
+删除
+- views/upload.ejs — 合并到 editor.ejs
+- server.js — 删除 UPLOAD_SECRET 常量和 /upload-* 路由
+
+重写
+- views/header.ejs — 顶部导航栏改为左侧 260px 固定侧边栏
+- views/footer.ejs — 简化为闭合标签
+- public/style.css — 全面重构为 sidebar 布局
+
+修改
+- views/home.ejs — 欢迎 Hero + 最近笔记网格
+- views/list.ejs — 页面标题头
+- views/search.ejs — 删除搜索框
+- 所有视图 — 传递 current 导航高亮
+- server.js — current 变量、SITE_TITLE 改为 MyNote
+- public/app.js — 侧边栏 AJAX 加载最近笔记
+
+## 改动五：笔记卡片交互
+
+- views/home.ejs — 卡片 hover 显示编辑/删除按钮
+- views/list.ejs — flex 布局 + hover 操作按钮
+- public/app.js — delNoteCard 动画消散
+- public/style.css — card-actions 样式
+
+## 改动六：真实预览 + 笔记页操作
+
+- server.js — POST /api/render 渲染接口
+- views/editor.ejs — 真实预览、插入图片自动切预览
+- views/note.ejs — 标题右侧编辑/删除按钮
+- public/style.css — note-header flex 布局
+
+## 改动七：笔记本/标签 + 搜索增强
+
+- notes.json 新增 tags 字段，新增 notebooks.json
+- API：笔记本 CRUD、笔记标签支持
+- 搜索：分区展示、关键词高亮、时间筛选
+- UI：侧边栏笔记本、标签徽章、搜索页重写
+
+## 改动八：笔记本管理 + 设置 + 暗色主题
+
+- 笔记本 hover 编辑/删除、重命名自动更新标签
+- 设置面板：深色主题、字体大小、Git 同步、排序
+- 暗色主题完整 CSS 变量覆盖
+
+## 改动九：模态框 + 自动命名
+
+- 新建笔记/笔记本模态框
+- 自动生成标题/名称
+- 笔记页元数据编辑弹窗
+- API：/api/next-name
+
+## 改动十：图片交互增强
+
+- 笔记页图片点击灯箱放大
+- 编辑器图片拖拽缩放 + ResizeObserver 源码同步
+
+---
+
 更新日志：
 
 ## 安全修复 + 回收站 + 文档整理
