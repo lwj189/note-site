@@ -397,6 +397,95 @@ async function togglePreview() {
   }
 }
 
+// ---- Image floating size toolbar ----
+var activeImgToolbar = null;
+
+function showImageToolbar(img) {
+  if (activeImgToolbar) hideImageToolbar();
+  var tb = document.createElement('div');
+  tb.className = 'img-size-toolbar';
+  var w = Math.round(img.offsetWidth);
+  var h = Math.round(img.offsetHeight);
+  var locked = true;
+  var aspect = (img.naturalWidth / img.naturalHeight) || 1;
+
+  tb.innerHTML =
+    '<div class="img-size-row">' +
+      '<label>宽</label><input type="number" class="img-size-input" id="img-size-w" value="' + w + '" min="20">' +
+      '<label>高</label><input type="number" class="img-size-input" id="img-size-h" value="' + h + '" min="20">' +
+      '<button class="img-size-lock" id="img-size-lock" title="锁定宽高比">🔗</button>' +
+    '</div>' +
+    '<div class="img-size-row">' +
+      '<button class="btn btn-sm" id="img-size-apply">应用</button>' +
+      '<button class="btn btn-sm btn-outline" id="img-size-close">关闭</button>' +
+    '</div>';
+
+  document.body.appendChild(tb);
+
+  // Position near the image
+  var rect = img.getBoundingClientRect();
+  tb.style.left = Math.min(rect.left, window.innerWidth - 260) + 'px';
+  tb.style.top = (rect.top - tb.offsetHeight - 8) + 'px';
+  // If above viewport, show below
+  if (parseInt(tb.style.top) < 10) {
+    tb.style.top = (rect.bottom + 8) + 'px';
+  }
+
+  activeImgToolbar = { el: tb, img: img, aspect: aspect, locked: locked };
+
+  var wInput = document.getElementById('img-size-w');
+  var hInput = document.getElementById('img-size-h');
+  var lockBtn = document.getElementById('img-size-lock');
+
+  // Live update on input
+  wInput.addEventListener('input', function() {
+    if (activeImgToolbar && activeImgToolbar.locked) {
+      hInput.value = Math.round(parseInt(this.value || 0) / aspect);
+    }
+  });
+  hInput.addEventListener('input', function() {
+    if (activeImgToolbar && activeImgToolbar.locked) {
+      wInput.value = Math.round(parseInt(this.value || 0) * aspect);
+    }
+  });
+
+  lockBtn.addEventListener('click', function() {
+    if (activeImgToolbar) activeImgToolbar.locked = !activeImgToolbar.locked;
+    this.textContent = activeImgToolbar && activeImgToolbar.locked ? '🔗' : '🔓';
+  });
+
+  document.getElementById('img-size-apply').addEventListener('click', function() {
+    var newW = parseInt(wInput.value);
+    var newH = parseInt(hInput.value);
+    if (!newW || !newH || newW < 10 || newH < 10) return;
+    img.style.width = newW + 'px';
+    img.style.height = newH + 'px';
+    syncImageSize(img, img.getAttribute('src'));
+    hideImageToolbar();
+  });
+
+  document.getElementById('img-size-close').addEventListener('click', hideImageToolbar);
+
+  // Click outside to close
+  setTimeout(function() {
+    document.addEventListener('click', tbOutsideClick, true);
+  }, 10);
+}
+
+function tbOutsideClick(e) {
+  if (activeImgToolbar && !activeImgToolbar.el.contains(e.target) && !e.target.closest('.img-size-toolbar')) {
+    hideImageToolbar();
+  }
+}
+
+function hideImageToolbar() {
+  document.removeEventListener('click', tbOutsideClick, true);
+  if (activeImgToolbar) {
+    activeImgToolbar.el.remove();
+    activeImgToolbar = null;
+  }
+}
+
 // ---- 8-directional image resize ----
 function makeImageResizable(img) {
   // Wrap in container
@@ -412,6 +501,13 @@ function makeImageResizable(img) {
   var origW = img.naturalWidth || 800;
   var origH = img.naturalHeight || 600;
   var aspect = origW / origH;
+
+  // Click image to show size toolbar
+  img.style.cursor = 'pointer';
+  img.addEventListener('click', function(e) {
+    if (e.target.closest('.resize-handle')) return;
+    showImageToolbar(img);
+  });
 
   // Create 8 handles
   var dirs = ['nw','n','ne','e','se','s','sw','w'];
