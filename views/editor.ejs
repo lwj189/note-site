@@ -369,30 +369,9 @@ async function renderPreview() {
     const data = await res.json();
     if (data.html) {
       preview.innerHTML = data.html;
-      // Make images resizable
+      // Make images resizable with 8-directional handles
       preview.querySelectorAll('img').forEach(img => {
-        const wrapper = document.createElement('span');
-        wrapper.className = 'img-resizable';
-        wrapper.style.display = 'inline-block';
-        wrapper.style.position = 'relative';
-        wrapper.style.maxWidth = '100%';
-        img.parentNode.insertBefore(wrapper, img);
-        wrapper.appendChild(img);
-        img.style.display = 'block';
-        img.style.width = '100%';
-        img.style.height = 'auto';
-        // Track resize via ResizeObserver
-        const url = img.getAttribute('src');
-        new ResizeObserver(() => {
-          const w = Math.round(img.getBoundingClientRect().width);
-          if (w > 0 && url) {
-            const re = new RegExp('!\\[[^\\]]*\\]\\(\\s*' + url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\)', 'g');
-            const newMd = '<img src="' + url + '" width="' + w + '">';
-            if (re.test(textarea.value)) {
-              textarea.value = textarea.value.replace(re, newMd);
-            }
-          }
-        }).observe(wrapper);
+        makeImageResizable(img);
       });
     } else {
       preview.innerHTML = '<div class="preview-empty">渲染失败</div>';
@@ -415,6 +394,104 @@ async function togglePreview() {
     btn.classList.remove('active');
     textarea.style.display = '';
     preview.style.display = 'none';
+  }
+}
+
+// ---- 8-directional image resize ----
+function makeImageResizable(img) {
+  // Wrap in container
+  const wrapper = document.createElement('span');
+  wrapper.className = 'img-resizable';
+  wrapper.style.cssText = 'display:inline-block;position:relative;max-width:100%;line-height:0';
+  img.parentNode.insertBefore(wrapper, img);
+  wrapper.appendChild(img);
+  img.style.cssText = 'display:block;max-width:100%;height:auto';
+
+  const url = img.getAttribute('src');
+  let minW = 40, minH = 40;
+  var origW = img.naturalWidth || 800;
+  var origH = img.naturalHeight || 600;
+  var aspect = origW / origH;
+
+  // Create 8 handles
+  var dirs = ['nw','n','ne','e','se','s','sw','w'];
+  dirs.forEach(function(dir) {
+    var h = document.createElement('div');
+    h.className = 'resize-handle resize-handle-' + dir;
+    wrapper.appendChild(h);
+    h.addEventListener('mousedown', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var startX = e.clientX, startY = e.clientY;
+      var startW = img.offsetWidth, startH = img.offsetHeight;
+      var shiftLock = false;
+
+      function onMove(me) {
+        var dx = me.clientX - startX;
+        var dy = me.clientY - startY;
+        var newW = startW, newH = startH;
+
+        // Adjust based on handle direction
+        if (dir.indexOf('e') !== -1) newW = startW + dx;
+        if (dir.indexOf('w') !== -1) newW = startW - dx;
+        if (dir.indexOf('s') !== -1) newH = startH + dy;
+        if (dir.indexOf('n') !== -1) newH = startH - dy;
+
+        // Shift key = maintain aspect ratio
+        if (me.shiftKey || shiftLock) {
+          if (dir === 'e' || dir === 'w') { newH = newW / aspect; }
+          else if (dir === 'n' || dir === 's') { newW = newH * aspect; }
+          else {
+            // Corner: use larger delta
+            var ratio = Math.max(Math.abs(dx) / (startW || 1), Math.abs(dy) / (startH || 1));
+            if (ratio > 0.01) {
+              var signX = dx >= 0 ? 1 : -1;
+              var signY = dy >= 0 ? 1 : -1;
+              if (Math.abs(dx) >= Math.abs(dy)) {
+                newW = startW + signX * ratio * startW;
+                newH = newW / aspect;
+              } else {
+                newH = startH + signY * ratio * startH;
+                newW = newH * aspect;
+              }
+            }
+          }
+        }
+
+        // Clamp
+        newW = Math.max(minW, Math.round(newW));
+        newH = Math.max(minH, Math.round(newH));
+
+        img.style.width = newW + 'px';
+        img.style.height = newH + 'px';
+      }
+
+      function onUp() {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        syncImageSize(img, url);
+      }
+
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  });
+}
+
+function syncImageSize(img, url) {
+  if (!url) return;
+  var w = Math.round(img.offsetWidth);
+  var h = Math.round(img.offsetHeight);
+  // Update source text: convert markdown image to HTML with width/height
+  var escapedUrl = url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Match both markdown ![alt](url) and <img src="url">
+  var mdRe = new RegExp('!\\[[^\\]]*\\]\\(\\s*' + escapedUrl + '\\s*\\)', 'g');
+  var imgRe = new RegExp('<img\\s+[^>]*src="' + escapedUrl + '"[^>]*>', 'gi');
+  var newTag = '<img src="' + url + '" width="' + w + '" height="' + h + '">';
+  if (mdRe.test(textarea.value)) {
+    textarea.value = textarea.value.replace(mdRe, newTag);
+  } else if (imgRe.test(textarea.value)) {
+    textarea.value = textarea.value.replace(imgRe, newTag);
   }
 }
 
