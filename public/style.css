@@ -54,7 +54,7 @@ html.dark input,
 html.dark select,
 html.dark textarea { background: var(--input-bg); color: var(--fg); border-color: var(--border); }
 html.dark .editor-meta { background: var(--card-bg); }
-html.dark .editor-toolbar { background: var(--card-bg); }
+html.dark .editor-toolbar { overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: thin; background: var(--card-bg); }
 html.dark .toolbar-btn:hover { background: #334155; }
 html.dark .toolbar-btn.active { background: var(--accent); color: #fff; }
 html.dark .card-action-btn { background: #1e293b; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
@@ -1257,7 +1257,7 @@ html.dark .notebook-tab.active { background: var(--accent); }
   border-bottom: none;
   flex-wrap: wrap;
 }
-.toolbar-btn {
+.toolbar-btn { flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   gap: 6px;
