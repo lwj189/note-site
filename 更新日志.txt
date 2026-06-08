@@ -287,3 +287,16 @@
 - 导出备份：一键下载所有笔记和笔记本为 JSON 文件
 - 恢复备份：选择备份文件一键恢复
 - API：GET /api/backup、POST /api/restore
+
+## 体验优化
+### 备份布局修复
+- 备份区域增加内边距和背景色，视觉上独立成块
+
+### 编辑器增强
+- 字数统计：编辑器底部显示「字数 | 词数 | 行数」
+- 全屏写作：工具栏新增 ⛶ 按钮，点击全屏专注写作
+
+### PWA 支持
+- manifest.json — 支持添加到主屏幕
+- Service Worker — 基础离线支持
+- theme-color / apple-mobile-web-app-capable 元标签

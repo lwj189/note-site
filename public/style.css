@@ -1537,6 +1537,9 @@ html.dark .img-size-toolbar { background: #1e293b; border-color: #475569; }
 }
 .img-size-lock:hover { background: #eef2ff; }
 
+
+/* ---- Fullscreen editor ---- */
+.editor-area.fullscreen{position:fixed;top:0;left:0;right:0;bottom:0;z-index:999;background:var(--bg);padding:0;margin:0;border:none;border-radius:0;min-height:100vh}.editor-area.fullscreen textarea,.editor-area.fullscreen .editor-preview{padding:32px 48px;font-size:1.05rem;line-height:1.8}.editor-area.fullscreen.split textarea{padding:32px 24px}.editor-area.fullscreen .editor-actions{position:fixed;bottom:0;left:0;right:0;padding:12px 32px;background:var(--bg);border-top:1px solid var(--border);z-index:1000;margin:0}
 /* ---- 8-directional image resize handles ---- */
 .img-resizable { display: inline-block; position: relative; max-width: 100%; line-height: 0; }
 .img-resizable:hover .resize-handle { opacity: 1; }
