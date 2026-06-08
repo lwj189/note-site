@@ -83,8 +83,8 @@ function saveAndCloseSettings() {
     if (!notebooks.length) { list.innerHTML = '<div class="sidebar-recent-loading">暂无笔记本，点击 + 创建</div>'; return; }
     list.innerHTML = notebooks.map(function(nb) {
       return '<div class="sidebar-notebook-row" data-name="' + nb.name.replace(/"/g, '&quot;') + '">' +
-        '<a href="/notebook/' + encodeURIComponent(nb.name) + '" class="sidebar-notebook-item">' +
-          '<span class="notebook-name">' + nb.name.replace(/</g, '&lt;') + '</span>' +
+        '<a href="/notebook/' + encodeURIComponent(nb.name) + '" class="sidebar-notebook-item" style="border-left-color:' + (nb.color || '#4361ee') + '">' +
+          '<span class="notebook-name">' + (nb.icon || '📁') + ' ' + nb.name.replace(/</g, '&lt;') + '</span>' +
           '<span class="notebook-count">' + nb.count + '</span>' +
         '</a>' +
         '<div class="notebook-actions">' +

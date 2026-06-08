@@ -2,13 +2,27 @@
 
 <div class="editor-page">
   <div class="editor-toolbar">
-    <button type="button" class="toolbar-btn" onclick="openImagePicker()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-      插入图片
-    </button>
-    <label class="toolbar-btn">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-      插入文件
+    <!-- Formatting -->
+    <button type="button" class="toolbar-btn" onclick="mdFormat('bold')" title="加粗"><b>B</b></button>
+    <button type="button" class="toolbar-btn" onclick="mdFormat('italic')" title="斜体"><i>I</i></button>
+    <button type="button" class="toolbar-btn" onclick="mdFormat('strike')" title="删除线"><s>S</s></button>
+    <button type="button" class="toolbar-btn" onclick="mdFormat('code')" title="行内代码">&lt;/&gt;</button>
+    <span class="toolbar-sep"></span>
+    <button type="button" class="toolbar-btn" onclick="mdFormat('h1')" title="标题1">H1</button>
+    <button type="button" class="toolbar-btn" onclick="mdFormat('h2')" title="标题2">H2</button>
+    <button type="button" class="toolbar-btn" onclick="mdFormat('h3')" title="标题3">H3</button>
+    <span class="toolbar-sep"></span>
+    <button type="button" class="toolbar-btn" onclick="mdFormat('ul')" title="无序列表">=</button>
+    <button type="button" class="toolbar-btn" onclick="mdFormat('ol')" title="有序列表">1.</button>
+    <button type="button" class="toolbar-btn" onclick="mdFormat('quote')" title="引用">"</button>
+    <button type="button" class="toolbar-btn" onclick="mdFormat('codeblock')" title="代码块">{ }</button>
+    <button type="button" class="toolbar-btn" onclick="mdFormat('hr')" title="分隔线">-</button>
+    <button type="button" class="toolbar-btn" onclick="mdFormat('link')" title="链接">&</button>
+    <span class="toolbar-sep"></span>
+    <button type="button" class="toolbar-btn" onclick="openImagePicker()" title="插入图片">[img]</button>
+    <button type="button" class="toolbar-btn" onclick="openTemplatePicker()" title="笔记模板">[tpl]</button>
+    <label class="toolbar-btn" title="插入文件">
+      [file]
       <input type="file" id="tb-file-input" accept=".txt,.cpp,.md,.h,.hpp,.c,.py,.js,.ts,.java,.cs,.go,.rs,.rb,.php,.html,.css,.json,.xml,.yaml,.yml,.sql,.sh,.bat,.ps1,.docx" hidden>
     </label>
     <span class="toolbar-sep"></span>
@@ -16,6 +30,7 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
       预览
     </button>
+
     <div id="toolbar-msg" class="toolbar-msg"></div>
   </div>
 
@@ -77,7 +92,175 @@
   </form>
 </div>
 
-<!-- Image Picker Modal -->
+<!-- Template Picker Modal -->
+<div id="template-picker-overlay" class="picker-overlay" onclick="closeTemplatePicker(event)">
+  <div class="picker-dialog" onclick="event.stopPropagation()">
+    <div class="picker-header">
+      <span class="picker-title">📋 笔记模板</span>
+      <button type="button" class="picker-close" onclick="closeTemplatePicker()">&times;</button>
+    </div>
+    <div class="template-grid" id="template-grid">
+      <div class="template-card" onclick="applyTemplate('meeting')">
+        <div class="template-icon">👥</div>
+        <div class="template-name">会议记录</div>
+        <div class="template-desc">会议议题、讨论和行动项</div>
+      </div>
+      <div class="template-card" onclick="applyTemplate('study')">
+        <div class="template-icon">📚</div>
+        <div class="template-name">学习笔记</div>
+        <div class="template-desc">知识点和心得体会</div>
+      </div>
+      <div class="template-card" onclick="applyTemplate('todo')">
+        <div class="template-icon">✅</div>
+        <div class="template-name">待办清单</div>
+        <div class="template-desc">任务列表和进度追踪</div>
+      </div>
+      <div class="template-card" onclick="applyTemplate('daily')">
+        <div class="template-icon">📅</div>
+        <div class="template-name">日报/周报</div>
+        <div class="template-desc">工作内容和计划总结</div>
+      </div>
+      <div class="template-card" onclick="applyTemplate('problem')">
+        <div class="template-icon">🔍</div>
+        <div class="template-name">问题记录</div>
+        <div class="template-desc">Bug/问题及解决方案</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---- Markdown Formatting ----
+function mdFormat(type) {
+  var ta = document.getElementById('e-content');
+  var start = ta.selectionStart;
+  var end = ta.selectionEnd;
+  var sel = ta.value.substring(start, end);
+  var before = ta.value.substring(0, start);
+  var after = ta.value.substring(end);
+  var text = '';
+  var cursor = start;
+  switch (type) {
+    case 'bold': text = '**' + (sel || '加粗文本') + '**'; cursor = sel ? start + text.length : start + 2; break;
+    case 'italic': text = '*' + (sel || '斜体文本') + '*'; cursor = sel ? start + text.length : start + 1; break;
+    case 'strike': text = '~~' + (sel || '删除线') + '~~'; cursor = sel ? start + text.length : start + 2; break;
+    case 'code': text = '`' + (sel || '代码') + '`'; cursor = sel ? start + text.length : start + 1; break;
+    case 'h1': text = '# ' + (sel || '标题1'); cursor = start + text.length; break;
+    case 'h2': text = '## ' + (sel || '标题2'); cursor = start + text.length; break;
+    case 'h3': text = '### ' + (sel || '标题3'); cursor = start + text.length; break;
+    case 'ul': text = '- ' + (sel || '列表项'); cursor = start + text.length; break;
+    case 'ol': text = '1. ' + (sel || '列表项'); cursor = start + text.length; break;
+    case 'quote': text = '> ' + (sel || '引用文本'); cursor = start + text.length; break;
+    case 'hr': text = '
+
+---
+
+'; cursor = start + 7; break;
+    case 'link': text = '[' + (sel || '链接文字') + '](url)'; cursor = sel ? start + text.length - 2 : start + 1; break;
+    case 'codeblock': text = '```
+' + (sel || '代码块') + '
+```'; cursor = start + text.length; break;
+  }
+  ta.value = before + text + after;
+  ta.selectionStart = ta.selectionEnd = cursor;
+  ta.focus();
+}
+
+// ---- Templates ----
+const TEMPLATES = {
+  meeting: '# 会议记录 - [会议名称]
+
+**时间**： [日期]
+**参与人员**： [姓名]
+
+## 议题
+1. [议题一]
+2. [议题二]
+
+## 讨论内容
+- [关键点]
+
+## 行动项
+- [ ] [行动项] - 负责人：[姓名]
+- [ ] [行动项] - 截止：[日期]',
+  study: '# [学习主题]
+
+## 概述
+[内容总结]
+
+## 关键点
+- [点一]
+- [点二]
+
+## 代码示例
+```
+[示例代码]
+```
+
+## 总结
+- [心得体会]',
+  todo: '# 待办清单
+
+## [分类一]
+- [ ] [任务]
+- [ ] [任务]
+
+## [分类二]
+- [x] [已完成]
+- [ ] [待办]
+
+---
+进度： [数字]%',
+  daily: '# [日期] 日报
+
+## 今日完成
+- [工作内容]
+- [工作内容]
+
+## 遇到的问题
+- [问题及解决方案]
+
+## 明日计划
+- [计划内容]',
+  problem: '# [问题标题]
+
+## 环境
+- 系统：[版本]
+
+## 问题描述
+[详细描述]
+
+## 排查过程
+1. [步骤一]
+2. [步骤二]
+
+## 解决方案
+```
+[解决方案代码/步骤]
+```
+
+## 预防措施
+- [措施]'
+};
+
+function openTemplatePicker() {
+  document.getElementById('template-picker-overlay').classList.add('active');
+}
+
+function closeTemplatePicker(e) {
+  if (e && e.target !== document.getElementById('template-picker-overlay')) return;
+  document.getElementById('template-picker-overlay').classList.remove('active');
+}
+
+function applyTemplate(name) {
+  var content = TEMPLATES[name];
+  if (!content) return;
+  var ta = document.getElementById('e-content');
+  ta.value = content;
+  ta.focus();
+  closeTemplatePicker();
+}
+
 <div id="image-picker-overlay" class="picker-overlay" onclick="closeImagePicker(event)">
   <div class="picker-dialog" onclick="event.stopPropagation()">
     <div class="picker-header">
@@ -249,7 +432,8 @@ function insertSelectedImages() {
   let text = '';
   sorted.forEach(idx => {
     const img = galleryImages[idx];
-    text += '![' + img.filename + '](' + img.url + ')\n';
+    text += '![' + img.filename + '](' + img.url + ')
+';
   });
   insertAtCursor(text);
   closeImagePicker();
@@ -282,7 +466,8 @@ document.getElementById('picker-image-input').addEventListener('change', async f
       const res = await fetch('/api/upload-image', { method: 'POST', body: fd });
       const data = await res.json();
       if (data.ok) {
-        insertAtCursor(data.md + '\n');
+        insertAtCursor(data.md + '
+');
         inserted++;
         setTimeout(showPreviewAfterInsert, 150);
       }
@@ -319,11 +504,18 @@ document.getElementById('tb-file-input').addEventListener('change', function() {
     const lang = LANG_MAP[ext] || '';
     let text;
     if (lang && lang !== 'md' && lang !== 'txt') {
-      text = '```' + lang + '\n' + content + '\n```\n';
+      text = '```' + lang + '
+' + content + '
+```
+';
     } else if (lang === 'md') {
-      text = content + '\n';
+      text = content + '
+';
     } else {
-      text = '```\n' + content + '\n```\n';
+      text = '```
+' + content + '
+```
+';
     }
     insertAtCursor(text);
     showMsg('文件内容已插入');
@@ -343,7 +535,8 @@ async function insertDocxFile(file) {
     const res = await fetch('/api/parse-docx', { method: 'POST', body: fd });
     const data = await res.json();
     if (data.ok) {
-      insertAtCursor(data.text + '\n');
+      insertAtCursor(data.text + '
+');
       showMsg('.docx 内容已插入');
     } else {
       showMsg(data.error, true);
