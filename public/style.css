@@ -364,21 +364,20 @@ html.dark .search-result-item:hover { background: #334155; }
 
 /* Sidebar notebooks */
 .sidebar-notebooks {
-  border-top: 1px solid var(--border);
-  padding-top: 14px;
-  margin-bottom: 14px;
+  padding: 0 0 4px 0;
+  margin: 0;
 }
 .sidebar-section-title {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: .75rem;
+  font-size: .7rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
   color: var(--muted);
-  margin-bottom: 8px;
-  padding: 0 4px;
+  margin-bottom: 4px;
+  padding: 0 2px;
 }
 .sidebar-add-btn {
   width: 22px; height: 22px;
@@ -1748,6 +1747,7 @@ body { font-size: calc(1rem * var(--font-scale, 1)); }
   .nav-card-arrow { display: none; }
   .sidebar-recent { display: none; }
   .sidebar-notebooks { display: none; }
+  .sidebar-section-title { display: none; }
   .sidebar-footer { display: none; }
 
   main { padding: 24px 16px 40px; }
