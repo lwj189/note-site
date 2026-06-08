@@ -30,6 +30,7 @@ function openSettings() {
       '<div class="settings-row"><label>首页排序</label><select id="set-sort"><option value="updated"' + ((s.sort || 'updated') === 'updated' ? ' selected' : '') + '>按更新时间</option><option value="created"' + (s.sort === 'created' ? ' selected' : '') + '>按创建时间</option><option value="alpha"' + (s.sort === 'alpha' ? ' selected' : '') + '>按字母顺序</option></select></div>' +
     '</div>' +
     '<div class="settings-footer"><button class="btn" onclick="saveAndCloseSettings()">保存设置</button></div>' +
+    '<div class="settings-section" style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px"><div style="font-size:.78rem;font-weight:700;color:var(--muted);margin-bottom:8px">💾 数据备份</div><div class="settings-row"><label>导出所有笔记</label><button class="btn btn-sm" onclick="backupData()" style="margin:0">导出备份</button></div><div class="settings-row"><label>从备份恢复</label><label class="btn btn-sm btn-outline" style="margin:0;cursor:pointer">选择文件<input type="file" id="restore-input" accept=".json" hidden onchange="restoreData(this)"></label></div></div>' +
   '</div></div>';
   var div = document.createElement('div');
   div.id = 'settings-container';
