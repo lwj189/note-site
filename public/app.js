@@ -75,7 +75,7 @@ function saveAndCloseSettings() {
 
 // Sidebar: load notebooks
 (async function() {
-  var list = document.getElementById('sidebar-notebook-list-inside');
+  var list = document.getElementById('sidebar-notebook-list');
   if (!list) return;
   try {
     var res = await fetch('/api/notebooks');

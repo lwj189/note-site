@@ -1,0 +1,26 @@
+<%- include('header', { heading: '笔记本', current: 'notebooks' }) %>
+
+<div class="page-header">
+  <h1>📁 笔记本</h1>
+  <button class="btn" onclick="showNewNotebook()">+ 新建笔记本</button>
+</div>
+
+<% if (notebooks.length === 0) { %>
+<div class="empty">
+  <p style="font-size:1.1rem;margin-bottom:12px">还没有笔记本</p>
+  <p style="color:var(--muted);margin-bottom:20px">创建笔记本对笔记进行分类管理</p>
+  <button class="btn" onclick="showNewNotebook()">+ 创建第一个笔记本</button>
+</div>
+<% } else { %>
+<div class="notebook-card-grid">
+  <% notebooks.forEach(nb => { %>
+  <a href="/notebook/<%= encodeURIComponent(nb.name) %>" class="notebook-card" style="--nb-color: <%= nb.color %>; border-left: 4px solid <%= nb.color %>">
+    <div class="notebook-card-icon"><%= nb.icon %></div>
+    <div class="notebook-card-name"><%= nb.name %></div>
+    <div class="notebook-card-count"><%= nb.count %> 篇笔记</div>
+  </a>
+  <% }) %>
+</div>
+<% } %>
+
+<%- include('footer') %>
