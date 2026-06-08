@@ -24,5 +24,9 @@ if (window.electronAPI && window.electronAPI.isElectron) {
   btn.style.display = 'none';
 })();
 </script>
+
+<script>
+document.addEventListener("keydown",function(e){var t=e.target.tagName;if(t==="INPUT"||t==="TEXTAREA"||t==="SELECT")return;switch(e.key){case"k":case"K":if(e.ctrlKey||e.metaKey){e.preventDefault();var s=document.getElementById("sidebar-search-input");if(s){s.focus();s.select()}}break;case"n":case"N":if(e.ctrlKey||e.metaKey){e.preventDefault();var b=document.querySelector('a[href="/new"]');if(b)b.click();else window.location.href="/new"}break;}});
+</script>
 </body>
 </html>

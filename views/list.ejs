@@ -36,6 +36,17 @@
   </div>
   <% }) %>
 </div>
+<div id="batch-bar" style="display:none;padding:12px 16px;background:var(--card-bg);border:1px solid var(--border);border-radius:8px;margin-top:12px;display:flex;align-items:center;gap:12px;max-width:900px">
+  <span id="batch-count" style="font-size:.85rem;color:var(--muted)">已选 0 篇</span>
+  <button class="btn btn-sm" onclick="batchDelete()" style="margin:0">批量删除</button>
+  <button class="btn btn-sm btn-outline" onclick="batchClear()" style="margin:0">取消选择</button>
+</div>
+<script>
+var batchSlugs=[];
+function updateBatchBar(){var c=document.querySelectorAll(".batch-check:checked");batchSlugs=[];c.forEach(function(x){batchSlugs.push(x.dataset.slug)});var bar=document.getElementById("batch-bar");if(bar){if(batchSlugs.length){bar.style.display="flex";document.getElementById("batch-count").textContent="已选 "+batchSlugs.length+" 篇"}else{bar.style.display="none"}}}
+function batchDelete(){if(!batchSlugs.length)return;if(!confirm("确定删除选中的 "+batchSlugs.length+" 篇笔记？"))return;var p=[];batchSlugs.forEach(function(s){p.push(fetch("/api/notes/"+encodeURIComponent(s),{method:"DELETE"}).then(function(r){return r.json()}))});Promise.all(p).then(function(){window.location.reload()})}
+function batchClear(){document.querySelectorAll(".batch-check:checked").forEach(function(x){x.checked=false});updateBatchBar()}
+</script>
 <% } %>
 
 <%- include('footer') %>
