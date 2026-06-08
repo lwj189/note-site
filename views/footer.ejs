@@ -28,5 +28,9 @@ if (window.electronAPI && window.electronAPI.isElectron) {
 <script>
 document.addEventListener("keydown",function(e){var t=e.target.tagName;if(t==="INPUT"||t==="TEXTAREA"||t==="SELECT")return;switch(e.key){case"k":case"K":if(e.ctrlKey||e.metaKey){e.preventDefault();var s=document.getElementById("sidebar-search-input");if(s){s.focus();s.select()}}break;case"n":case"N":if(e.ctrlKey||e.metaKey){e.preventDefault();var b=document.querySelector('a[href="/new"]');if(b)b.click();else window.location.href="/new"}break;}});
 </script>
+
+<script>
+function toggleNotebooks(){var list=document.getElementById("sidebar-notebook-list");var btn=document.getElementById("nb-collapse-btn");if(!list||!btn)return;if(list.style.display==="none"){list.style.display="";btn.textContent="▲";btn.title="收起笔记本列表"}else{list.style.display="none";btn.textContent="▼";btn.title="展开笔记本列表"}}
+</script>
 </body>
 </html>
