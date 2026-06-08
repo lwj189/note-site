@@ -5,6 +5,17 @@
   <p>共 <%= notes.length %> 篇笔记，按更新时间排序</p>
 </div>
 
+<% if (typeof notebooks !== 'undefined' && notebooks.length > 0) { %>
+<div class="notebook-tabs">
+  <a href="/list" class="notebook-tab <%= typeof currentNb === 'undefined' || !currentNb ? 'active' : '' %>">全部</a>
+  <% notebooks.forEach(nb => { %>
+  <a href="/list?nb=<%= encodeURIComponent(nb.name) %>" class="notebook-tab <%= typeof currentNb !== 'undefined' && currentNb === nb.name ? 'active' : '' %>" style="--nb-tab-color: <%= nb.color %>">
+    <%= nb.icon %> <%= nb.name %>
+  </a>
+  <% }) %>
+</div>
+<% } %>
+
 <% if (notes.length === 0) { %>
 <div class="empty"><p>还没有笔记。<a href="/new">创建第一篇</a></p></div>
 <% } else { %>

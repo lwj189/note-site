@@ -58,6 +58,28 @@ function saveNotebooks(notebooks) {
   scheduleFlush();
 }
 
+// Normalize notebook format (support old string[] and new object[])
+function getNotebookNames() {
+  return loadNotebooks().map(n => typeof n === 'string' ? n : n.name);
+}
+
+function getNotebookColor(name) {
+  const nb = loadNotebooks().find(n => (typeof n === 'string' ? n : n.name) === name);
+  if (!nb) return '#4361ee';
+  return typeof nb === 'string' ? '#4361ee' : (nb.color || '#4361ee');
+}
+
+function getNotebookIcon(name) {
+  const nb = loadNotebooks().find(n => (typeof n === 'string' ? n : n.name) === name);
+  if (!nb) return '📁';
+  return typeof nb === 'string' ? '📁' : (nb.icon || '📁');
+}
+
+function saveNotebooks(notebooks) {
+  notebooksCache = notebooks;
+  scheduleFlush();
+}
+
 function scheduleFlush() {
   if (flushTimer) clearTimeout(flushTimer);
   flushTimer = setTimeout(() => {
@@ -240,7 +262,7 @@ app.get('/', (req, res) => {
   const notes = loadActiveNotes();
   notes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
   const editNote = editSlug ? notes.find(n => n.slug === editSlug) : null;
-  res.render('home', { notes, site: SITE_TITLE, current: 'home', query: '', editNote });
+  res.render('home', { notes, notebooks: loadNotebooks().map(n => ({ name: typeof n === 'string' ? n : n.name, color: typeof n === 'string' ? '#4361ee' : (n.color || '#4361ee'), icon: typeof n === 'string' ? '📁' : (n.icon || '📁'), count: notes.filter(x => x.tags && x.tags.includes(typeof n === 'string' ? n : n.name)).length })), site: SITE_TITLE, current: 'home', query: '', editNote });
 });
 
 app.get('/search', (req, res) => {
@@ -318,7 +340,7 @@ app.get('/edit/:slug', (req, res) => {
 app.get('/list', (req, res) => {
   const notes = loadActiveNotes();
   notes.sort((a, b) => a.title.localeCompare(b.title, 'zh'));
-  res.render('list', { notes, site: SITE_TITLE, current: 'list' });
+  res.render('list', { notes: listNotes, notebooks, currentNb: filterNb, site: SITE_TITLE, current: 'list' });
 });
 
 app.get('/gallery', (req, res) => {
@@ -329,7 +351,7 @@ app.get('/notebook/:name', (req, res) => {
   const name = req.params.name;
   const notes = loadActiveNotes().filter(n => n.tags && n.tags.includes(name));
   notes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-  res.render('notebook', { notes, notebook: name, site: SITE_TITLE, current: 'notebook' });
+  res.render('notebook', { notes, notebook: name, site: SITE_TITLE, current: 'notebook', nbColor: getNotebookColor(name), nbIcon: getNotebookIcon(name) });
 });
 
 // Create / update note from form
@@ -492,7 +514,7 @@ app.get('/api/notes', (req, res) => {
 app.get('/trash', (req, res) => {
   const notes = loadNotes().filter(n => n.deletedAt);
   notes.sort((a, b) => new Date(b.deletedAt) - new Date(a.deletedAt));
-  res.render('trash', { notes, site: SITE_TITLE, current: 'trash' });
+  res.render('trash', { notes, site: SITE_TITLE, current: 'trash', nbColor: '', nbIcon: '' });
 });
 
 // Notebook APIs
@@ -536,7 +558,7 @@ app.get('/api/next-name', (req, res) => {
   if (type === 'notebook') {
     const notebooks = loadNotebooks();
     let num = 1;
-    while (notebooks.includes('新建笔记本' + num)) num++;
+    while (getNotebookNames().includes('新建笔记本' + num)) num++;
     res.json({ name: '新建笔记本' + num });
   } else {
     const notes = loadActiveNotes();
@@ -550,7 +572,7 @@ app.put('/api/notebooks/:name', (req, res) => {
   const { newName, addNotes } = req.body;
   if (!newName || !newName.trim()) return res.status(400).json({ error: '名称不能为空' });
   const notebooks = loadNotebooks();
-  const idx = notebooks.indexOf(req.params.name);
+  const idx = notebooks.findIndex(n => (typeof n === 'string' ? n : n.name) === req.params.name);
   if (idx === -1) return res.status(404).json({ error: 'not found' });
   if (notebooks.includes(newName.trim()) && newName.trim() !== req.params.name) {
     return res.status(400).json({ error: '笔记本已存在' });
@@ -573,7 +595,8 @@ app.put('/api/notebooks/:name', (req, res) => {
     });
   }
   saveNotes(notes);
-  notebooks[idx] = newName.trim();
+  const oldNb = notebooks[idx];
+  notebooks[idx] = typeof oldNb === 'string' ? newName.trim() : { ...oldNb, name: newName.trim() };
   saveNotebooks(notebooks);
   debouncedGitSync();
   res.json({ ok: true, name: newName.trim() });
