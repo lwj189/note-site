@@ -32,5 +32,9 @@ document.addEventListener("keydown",function(e){var t=e.target.tagName;if(t==="I
 <script>
 function toggleNotebooks(){var list=document.getElementById("sidebar-notebook-list");var btn=document.getElementById("nb-collapse-btn");if(!list||!btn)return;if(list.style.display==="none"){list.style.display="";btn.textContent="▲";btn.title="收起笔记本列表"}else{list.style.display="none";btn.textContent="▼";btn.title="展开笔记本列表"}}
 </script>
+
+<script>
+if("serviceWorker"in navigator){navigator.serviceWorker.register("/sw.js")}
+</script>
 </body>
 </html>
