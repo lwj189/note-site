@@ -36,5 +36,10 @@ function toggleNotebooks(){var list=document.getElementById("sidebar-notebook-li
 <script>
 if("serviceWorker"in navigator){navigator.serviceWorker.register("/sw.js")}
 </script>
+
+<script>
+function toggleMobileMenu(){var s=document.querySelector(".sidebar");var o=document.getElementById("sidebar-overlay");s.classList.toggle("open");o.classList.toggle("active")}
+function closeMobileMenu(){document.querySelector(".sidebar").classList.remove("open");document.getElementById("sidebar-overlay").classList.remove("active")}
+</script>
 </body>
 </html>
