@@ -338,8 +338,13 @@ app.get('/edit/:slug', (req, res) => {
 });
 
 app.get('/list', (req, res) => {
-  const notes = loadActiveNotes();
-  notes.sort((a, b) => a.title.localeCompare(b.title, 'zh'));
+  let listNotes = loadActiveNotes();
+  const filterNb = req.query.nb || '';
+  const notebooks = loadNotebooks().map(n => ({ name: typeof n === 'string' ? n : n.name, color: typeof n === 'string' ? '#4361ee' : (n.color || '#4361ee'), icon: typeof n === 'string' ? '📁' : (n.icon || '📁') }));
+  if (filterNb) {
+    listNotes = listNotes.filter(n => n.tags && n.tags.includes(filterNb));
+  }
+  listNotes.sort((a, b) => a.title.localeCompare(b.title, 'zh'));
   res.render('list', { notes: listNotes, notebooks, currentNb: filterNb, site: SITE_TITLE, current: 'list' });
 });
 
