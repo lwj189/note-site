@@ -75,12 +75,12 @@ function saveAndCloseSettings() {
 
 // Sidebar: load notebooks
 (async function() {
-  var list = document.getElementById('sidebar-notebook-list');
+  var list = document.getElementById('sidebar-notebook-list-inside');
   if (!list) return;
   try {
     var res = await fetch('/api/notebooks');
     var notebooks = await res.json();
-    if (!notebooks.length) { list.innerHTML = '<div class="sidebar-recent-loading">暂无笔记本，点击 + 创建</div>'; return; }
+    if (!notebooks.length) { list.innerHTML = '<div style="padding:8px 14px;font-size:.82rem;color:var(--muted)">暂无笔记本，点击上方 + 创建</div>'; return; }
     list.innerHTML = notebooks.map(function(nb) {
       return '<div class="sidebar-notebook-row" data-name="' + nb.name.replace(/"/g, '&quot;') + '">' +
         '<a href="/notebook/' + encodeURIComponent(nb.name) + '" class="sidebar-notebook-item" style="border-left-color:' + (nb.color || '#4361ee') + '">' +
