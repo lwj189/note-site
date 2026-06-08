@@ -35,6 +35,7 @@
   <div class="note-body"><%- html %></div>
 <input type="hidden" id="note-original-content" value="<%= note.content.replace(/"/g, '&quot;') %>">
 </article>
+<style>.code-copy-btn{position:absolute;top:8px;right:8px;padding:4px 10px;font-size:.75rem;background:rgba(255,255,255,.1);color:#94a3b8;border:1px solid rgba(255,255,255,.15);border-radius:4px;cursor:pointer;opacity:0;transition:all .15s;font-family:inherit;z-index:2}pre:hover .code-copy-btn{opacity:1}.code-copy-btn:hover{background:rgba(255,255,255,.2);color:#fff}.code-copy-btn.copied{background:#16a34a;color:#fff;border-color:#16a34a}</style><script>(function(){document.querySelectorAll(".note-body pre").forEach(function(p){var b=document.createElement("button");b.className="code-copy-btn";b.textContent="复制";b.onclick=function(){var c=p.querySelector("code");var t=c?c.textContent:p.textContent;if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(function(){b.textContent="已复制";b.classList.add("copied");setTimeout(function(){b.textContent="复制";b.classList.remove("copied")},2000)})}else{var a=document.createElement("textarea");a.value=t;a.style.position="fixed";a.style.left="-9999px";document.body.appendChild(a);a.select();document.execCommand("copy");document.body.removeChild(a);b.textContent="已复制";setTimeout(function(){b.textContent="复制"},2000)}};p.style.position="relative";p.appendChild(b)})})();</script>
 
 <a href="/" class="back">&larr; 返回首页</a>
 
