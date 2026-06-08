@@ -73,6 +73,38 @@ function saveAndCloseSettings() {
   } catch (err) { list.innerHTML = '<div class="sidebar-recent-loading">加载失败</div>'; }
 })();
 
+
+function backupData() {
+  fetch('/api/backup').then(function(r){return r.json()}).then(function(data){
+    var blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'mynote-backup-' + new Date().toISOString().slice(0,10) + '.json';
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+}
+function restoreData(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function() {
+    try {
+      var data = JSON.parse(reader.result);
+      if (!data.version) { alert('无效的备份文件'); return; }
+      fetch('/api/restore', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)})
+        .then(function(r){return r.json()})
+        .then(function(d){
+          if (d.ok) { alert('恢复成功！共 ' + d.notesCount + ' 篇笔记。'); window.location.reload(); }
+          else { alert('恢复失败：' + d.error); }
+        });
+    } catch(e) { alert('无效的备份文件'); }
+  };
+  reader.readAsText(file);
+}
+
 // Sidebar: load notebooks
 (async function() {
   var list = document.getElementById('sidebar-notebook-list');
