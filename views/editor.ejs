@@ -814,22 +814,7 @@ function makeImageResizable(img) {
   });
 }
 
-function syncImageSize(img, url) {
-  if (!url) return;
-  var w = Math.round(img.offsetWidth);
-  var h = Math.round(img.offsetHeight);
-  // Update source text: convert markdown image to HTML with width/height
-  var escapedUrl = url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  // Match both markdown ![alt](url) and <img src="url">
-  var mdRe = new RegExp('!\\[[^\\]]*\\]\\(\\s*' + escapedUrl + '\\s*\\)', 'g');
-  var imgRe = new RegExp('<img\\s+[^>]*src="' + escapedUrl + '"[^>]*>', 'gi');
-  var newTag = '<img src="' + url + '" width="' + w + '" height="' + h + '">';
-  if (mdRe.test(textarea.value)) {
-    textarea.value = textarea.value.replace(mdRe, newTag);
-  } else if (imgRe.test(textarea.value)) {
-    textarea.value = textarea.value.replace(imgRe, newTag);
-  }
-}
+function syncImageSize(img,url){if(!url)return;var w=Math.round(img.offsetWidth);var h=Math.round(img.offsetHeight);imageSizes[url]={w:w,h:h}}
 
 // Auto-preview after inserting image
 function showPreviewAfterInsert() {
@@ -890,7 +875,8 @@ document.getElementById('editor-form').addEventListener('submit', async e => {
         slug: slug,
         content: content,
         type: type,
-        tags: tags
+        tags: tags,
+        imgSizes: imageSizes
       })
     });
     const data = await res.json();
