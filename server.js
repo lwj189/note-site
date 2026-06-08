@@ -388,7 +388,7 @@ app.post('/api/notes', (req, res) => {
     existing.tags = parsedTags;
     existing.updatedAt = now;
   } else {
-    notes.push({ id: crypto.randomBytes(8).toString('hex'), slug, title, content, type: type || 'md', tags: parsedTags, createdAt: now, updatedAt: now });
+    notes.push({ id: crypto.randomBytes(8).toString('hex'), slug, title, content, type: type || 'md', tags: parsedTags, imgSizes: req.body.imgSizes || {}, createdAt: now, updatedAt: now });
   }
   saveNotes(notes);
   debouncedGitSync();
