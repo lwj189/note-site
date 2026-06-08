@@ -660,6 +660,34 @@ app.post('/api/render', (req, res) => {
 // 404
 app.use((req, res) => res.status(404).render('404', { site: SITE_TITLE, current: '404' }));
 
+
+// ---- Backup & Restore ----
+app.get("/api/backup", (req, res) => {
+  const backup = {
+    version: "1.0",
+    date: new Date().toISOString(),
+    notes: loadNotes(),
+    notebooks: loadNotebooks()
+  };
+  res.setHeader("Content-Type", "application/json");
+  res.setHeader("Content-Disposition", "attachment; filename=mynote-backup-" + new Date().toISOString().slice(0,10) + ".json");
+  res.json(backup);
+});
+
+app.post("/api/restore", express.json({limit:"50mb"}), (req, res) => {
+  const data = req.body;
+  if (!data || !data.version) return res.status(400).json({error: "无效的备份文件"});
+  if (data.notes) {
+    saveNotes(data.notes);
+    notesCache = data.notes;
+  }
+  if (data.notebooks) {
+    saveNotebooks(data.notebooks);
+    notebooksCache = data.notebooks;
+  }
+  res.json({ok: true, notesCount: data.notes ? data.notes.length : 0});
+});
+
 // ---- Start ----
 const os = require('os');
 const IS_ELECTRON = process.env.ELECTRON_RUN || false;
