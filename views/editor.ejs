@@ -3,34 +3,33 @@
 <div class="editor-page">
   <div class="editor-toolbar">
     <!-- Formatting -->
-    <button type="button" class="toolbar-btn" onclick="mdFormat('bold')" title="加粗"><b>B</b></button>
-    <button type="button" class="toolbar-btn" onclick="mdFormat('italic')" title="斜体"><i>I</i></button>
+    <button type="button" class="toolbar-btn" onclick="mdFormat('bold')" title="加粗 Ctrl+B"><b>B</b></button>
+    <button type="button" class="toolbar-btn" onclick="mdFormat('italic')" title="斜体 Ctrl+I"><i>I</i></button>
     <button type="button" class="toolbar-btn" onclick="mdFormat('strike')" title="删除线"><s>S</s></button>
-    <button type="button" class="toolbar-btn" onclick="mdFormat('code')" title="行内代码">&lt;/&gt;</button>
+    <button type="button" class="toolbar-btn" onclick="mdFormat('code')" title="行内代码">⌨</button>
     <span class="toolbar-sep"></span>
     <button type="button" class="toolbar-btn" onclick="mdFormat('h1')" title="标题1">H1</button>
     <button type="button" class="toolbar-btn" onclick="mdFormat('h2')" title="标题2">H2</button>
     <button type="button" class="toolbar-btn" onclick="mdFormat('h3')" title="标题3">H3</button>
     <span class="toolbar-sep"></span>
-    <button type="button" class="toolbar-btn" onclick="mdFormat('ul')" title="无序列表">=</button>
-    <button type="button" class="toolbar-btn" onclick="mdFormat('ol')" title="有序列表">1.</button>
-    <button type="button" class="toolbar-btn" onclick="mdFormat('quote')" title="引用">"</button>
-    <button type="button" class="toolbar-btn" onclick="mdFormat('codeblock')" title="代码块">{ }</button>
-    <button type="button" class="toolbar-btn" onclick="mdFormat('hr')" title="分隔线">-</button>
-    <button type="button" class="toolbar-btn" onclick="mdFormat('link')" title="链接">&</button>
+    <button type="button" class="toolbar-btn" onclick="mdFormat('ul')" title="无序列表">‣</button>
+    <button type="button" class="toolbar-btn" onclick="mdFormat('ol')" title="有序列表">#.</button>
+    <button type="button" class="toolbar-btn" onclick="mdFormat('quote')" title="引用">“</button>
+    <button type="button" class="toolbar-btn" onclick="mdFormat('codeblock')" title="代码块">↻</button>
     <span class="toolbar-sep"></span>
-    <button type="button" class="toolbar-btn" onclick="openImagePicker()" title="插入图片">[img]</button>
-    <button type="button" class="toolbar-btn" onclick="openTemplatePicker()" title="笔记模板">[tpl]</button>
-    <label class="toolbar-btn" title="插入文件">
-      [file]
+    <button type="button" class="toolbar-btn" onclick="mdFormat('link')" title="插入链接">⛓</button>
+    <button type="button" class="toolbar-btn" onclick="mdFormat('hr')" title="分隔线">━</button>
+    <span class="toolbar-sep"></span>
+    <button type="button" class="toolbar-btn" onclick="openImagePicker()" title="插入图片">🖼</button>
+    <button type="button" class="toolbar-btn" onclick="openTemplatePicker()" title="笔记模板">📋</button>
+    <label class="toolbar-btn" title="插入文件">📄
       <input type="file" id="tb-file-input" accept=".txt,.cpp,.md,.h,.hpp,.c,.py,.js,.ts,.java,.cs,.go,.rs,.rb,.php,.html,.css,.json,.xml,.yaml,.yml,.sql,.sh,.bat,.ps1,.docx" hidden>
     </label>
     <span class="toolbar-sep"></span>
     <button type="button" class="toolbar-btn" id="tb-preview-btn" onclick="togglePreview()">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
       预览
-    </button>
-
+      </button>
     <div id="toolbar-msg" class="toolbar-msg"></div><button type="button" class="toolbar-btn" onclick="toggleFullscreen()" title="全屏写作" style="margin-left:auto">⛶</button><span id="word-count" style="font-size:.78rem;color:var(--muted);margin-left:12px"></span><span id="save-status" style="font-size:.78rem;color:var(--muted);margin-left:auto"></span>
   </div>
 
