@@ -1599,6 +1599,30 @@ html.dark .resize-handle { border-color: #1a1a2e; }
   grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
   gap: 10px;
 }
+.template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  padding: 16px;
+}
+.template-card {
+  padding: 16px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+  cursor: pointer;
+  transition: all .15s;
+  background: var(--card-bg);
+}
+.template-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(67,97,238,.12);
+  transform: translateY(-2px);
+}
+.template-icon { font-size: 2rem; margin-bottom: 8px; }
+.template-name { font-weight: 600; font-size: .9rem; margin-bottom: 4px; }
+.template-desc { font-size: .78rem; color: var(--muted); line-height: 1.4; }
+
 .picker-loading, .picker-empty {
   grid-column: 1 / -1;
   text-align: center;
