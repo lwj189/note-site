@@ -359,6 +359,17 @@ app.get('/notebook/:name', (req, res) => {
   res.render('notebook', { notes, notebook: name, site: SITE_TITLE, current: 'notebook', nbColor: getNotebookColor(name), nbIcon: getNotebookIcon(name) });
 });
 
+
+// Notebooks overview page
+app.get('/notebooks', (req, res) => {
+  const notebooks = loadNotebooks().map(n => ({
+    name: typeof n === 'string' ? n : n.name,
+    color: typeof n === 'string' ? '#4361ee' : (n.color || '#4361ee'),
+    icon: typeof n === 'string' ? '📁' : (n.icon || '📁'),
+    count: loadActiveNotes().filter(x => x.tags && x.tags.includes(typeof n === 'string' ? n : n.name)).length
+  }));
+  res.render('notebooks', { notebooks, site: SITE_TITLE, current: 'notebooks' });
+});
 // Create / update note from form
 app.post('/api/notes', (req, res) => {
   const { title, slug, content, type, tags } = req.body;
