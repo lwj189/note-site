@@ -140,25 +140,19 @@ function mdFormat(type) {
   var text = '';
   var cursor = start;
   switch (type) {
-    case 'bold': text = '**' + (sel || '加粗文本') + '**'; cursor = sel ? start + text.length : start + 2; break;
-    case 'italic': text = '*' + (sel || '斜体文本') + '*'; cursor = sel ? start + text.length : start + 1; break;
-    case 'strike': text = '~~' + (sel || '删除线') + '~~'; cursor = sel ? start + text.length : start + 2; break;
-    case 'code': text = '`' + (sel || '代码') + '`'; cursor = sel ? start + text.length : start + 1; break;
-    case 'h1': text = '# ' + (sel || '标题1'); cursor = start + text.length; break;
-    case 'h2': text = '## ' + (sel || '标题2'); cursor = start + text.length; break;
-    case 'h3': text = '### ' + (sel || '标题3'); cursor = start + text.length; break;
-    case 'ul': text = '- ' + (sel || '列表项'); cursor = start + text.length; break;
-    case 'ol': text = '1. ' + (sel || '列表项'); cursor = start + text.length; break;
-    case 'quote': text = '> ' + (sel || '引用文本'); cursor = start + text.length; break;
-    case 'hr': text = '
-
----
-
-'; cursor = start + 7; break;
-    case 'link': text = '[' + (sel || '链接文字') + '](url)'; cursor = sel ? start + text.length - 2 : start + 1; break;
-    case 'codeblock': text = '```
-' + (sel || '代码块') + '
-```'; cursor = start + text.length; break;
+    case 'bold': text = '**' + (sel || 'bold') + '**'; cursor = sel ? start + text.length : start + 2; break;
+    case 'italic': text = '*' + (sel || 'italic') + '*'; cursor = sel ? start + text.length : start + 1; break;
+    case 'strike': text = '~~' + (sel || 'strike') + '~~'; cursor = sel ? start + text.length : start + 2; break;
+    case 'code': text = '`' + (sel || 'code') + '`'; cursor = sel ? start + text.length : start + 1; break;
+    case 'h1': text = '# ' + (sel || 'Heading 1'); cursor = start + text.length; break;
+    case 'h2': text = '## ' + (sel || 'Heading 2'); cursor = start + text.length; break;
+    case 'h3': text = '### ' + (sel || 'Heading 3'); cursor = start + text.length; break;
+    case 'ul': text = '- ' + (sel || 'item'); cursor = start + text.length; break;
+    case 'ol': text = '1. ' + (sel || 'item'); cursor = start + text.length; break;
+    case 'quote': text = '> ' + (sel || 'quote'); cursor = start + text.length; break;
+    case 'link': text = '[' + (sel || 'link text') + '](url)'; cursor = sel ? start + text.length - 2 : start + 1; break;
+    case 'hr': text = '\n\n---\n\n'; cursor = start + 7; break;
+    case 'codeblock': text = '```\n' + (sel || 'code') + '\n```'; cursor = start + text.length; break;
   }
   ta.value = before + text + after;
   ta.selectionStart = ta.selectionEnd = cursor;
