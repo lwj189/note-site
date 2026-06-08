@@ -363,9 +363,23 @@ html.dark .search-result-item:hover { background: #334155; }
 .sidebar-recent-item:hover { background: #eef2ff; color: var(--accent); }
 
 /* Sidebar notebooks */
-.sidebar-notebooks {
-  padding: 0 0 4px 0;
-  margin: 0;
+.sidebar-notebooks.nav-card {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  gap: 8px;
+  border-radius: 8px;
+  font-size: .88rem;
+  font-weight: 600;
+  border-left: 4px solid transparent;
+  color: #d97706;
+  background: #fffbeb;
+  margin-bottom: 0;
+  position: relative;
+}
+html.dark .sidebar-notebooks.nav-card {
+  background: #2d2415;
+  color: #fbbf24;
 }
 .sidebar-section-title {
   display: flex;
@@ -395,6 +409,13 @@ html.dark .search-result-item:hover { background: #334155; }
 }
 .sidebar-add-btn:hover { background: var(--accent); color: #fff; }
 
+.sidebar-notebook-list-inside {
+  padding: 0 0 6px 12px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
 .sidebar-notebook-list {
   display: flex;
   flex-direction: column;
@@ -427,6 +448,8 @@ html.dark .sidebar-notebook-row:hover { background: #2d2415; }
 }
 html.dark .sidebar-notebook-item:hover { color: #fbbf24; }
 .notebook-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-card-sm:hover { background: #f1f5f9; }
+html.dark .nav-card-sm:hover { background: #334155; }
 .notebook-count {
   font-size: .72rem;
   color: var(--muted);
@@ -1746,8 +1769,8 @@ body { font-size: calc(1rem * var(--font-scale, 1)); }
   .nav-trash { border-bottom-color: var(--nav-trash); }
   .nav-card-arrow { display: none; }
   .sidebar-recent { display: none; }
-  .sidebar-notebooks { display: none; }
-  .sidebar-section-title { display: none; }
+  .sidebar-notebooks.nav-card { display: none; }
+  .sidebar-notebook-list-inside { display: none; }
   .sidebar-footer { display: none; }
 
   main { padding: 24px 16px 40px; }

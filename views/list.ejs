@@ -6,14 +6,6 @@
 </div>
 
 <% if (typeof notebooks !== 'undefined' && notebooks.length > 0) { %>
-<div class="notebook-tabs">
-  <a href="/list" class="notebook-tab <%= typeof currentNb === 'undefined' || !currentNb ? 'active' : '' %>">全部</a>
-  <% notebooks.forEach(nb => { %>
-  <a href="/list?nb=<%= encodeURIComponent(nb.name) %>" class="notebook-tab <%= typeof currentNb !== 'undefined' && currentNb === nb.name ? 'active' : '' %>" style="--nb-tab-color: <%= nb.color %>">
-    <%= nb.icon %> <%= nb.name %>
-  </a>
-  <% }) %>
-</div>
 <% } %>
 
 <% if (notes.length === 0) { %>

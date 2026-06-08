@@ -27,14 +27,13 @@
       <span class="nav-card-label">首页</span>
       <span class="nav-card-arrow">→</span>
     </a>
-    <div class="sidebar-notebooks">
-      <div class="sidebar-section-title">
-        <span>📁 笔记本</span>
-        <button class="sidebar-add-btn" onclick="showNewNotebook()" title="新建笔记本">+</button>
-      </div>
-      <div id="sidebar-notebook-list" class="sidebar-notebook-list">
-        <div class="sidebar-recent-loading">加载中...</div>
-      </div>
+    <div class="sidebar-notebooks nav-card nav-notebook">
+      <span class="nav-card-icon">📁</span>
+      <span class="nav-card-label">笔记本</span>
+      <button class="sidebar-add-btn" onclick="showNewNotebook()" title="新建笔记本" style="margin-left:auto;margin-right:6px;flex-shrink:0">+</button>
+    </div>
+    <div id="sidebar-notebook-list" class="sidebar-notebook-list-inside">
+      <div class="sidebar-recent-loading">加载中...</div>
     </div>
     <a href="/list" class="nav-card nav-list<%= typeof current !== 'undefined' && current === 'list' ? ' active' : '' %>">
       <span class="nav-card-icon">📋</span>

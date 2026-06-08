@@ -526,11 +526,16 @@ app.get('/trash', (req, res) => {
 app.get('/api/notebooks', (req, res) => {
   const notebooks = loadNotebooks();
   const notes = loadActiveNotes();
-  // Return notebooks with note counts
-  const result = notebooks.map(name => ({
-    name,
-    count: notes.filter(n => n.tags && n.tags.includes(name)).length
-  }));
+  // Return notebooks with note counts and metadata
+  const result = notebooks.map(nb => {
+    const name = typeof nb === 'string' ? nb : nb.name;
+    return {
+      name,
+      color: typeof nb === 'string' ? '#4361ee' : (nb.color || '#4361ee'),
+      icon: typeof nb === 'string' ? '📁' : (nb.icon || '📁'),
+      count: notes.filter(n => n.tags && n.tags.includes(name)).length
+    };
+  });
   res.json(result);
 });
 
