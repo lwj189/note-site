@@ -500,12 +500,27 @@ html.dark .nav-card-sm:hover { background: #334155; }
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 2px;
   border-top: 1px solid var(--border);
   padding-top: 10px;
   margin-top: 10px;
   flex-shrink: 0;
 }
+.sidebar-git-status {
+  width: 100%;
+  font-size: .68rem;
+  color: var(--muted);
+  text-align: center;
+  padding: 2px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sidebar-git-status.syncing { color: var(--accent); font-weight: 600; }
+.sidebar-git-status.error { color: #dc2626; font-weight: 600; }
+html.dark .sidebar-git-status.error { color: #f87171; }
+.sidebar-git-status.disabled { opacity: .6; }
 .sidebar-settings-btn {
   display: inline-flex;
   align-items: center;

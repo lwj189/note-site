@@ -120,8 +120,11 @@ function gitExec(args) {
 
 let gitDebounceTimer = null;
 
+let gitState = { status: 'idle', lastSync: null, lastError: null };
+
 function debouncedGitSync() {
   if (!GIT_TOKEN) return;
+  gitState.status = 'pending';
   if (gitDebounceTimer) clearTimeout(gitDebounceTimer);
   gitDebounceTimer = setTimeout(() => {
     gitDebounceTimer = null;
@@ -132,8 +135,10 @@ function debouncedGitSync() {
 async function gitSync() {
   if (!GIT_TOKEN) {
     console.log('[git] GIT_TOKEN not set, skip auto-sync');
+    gitState.status = 'disabled';
     return;
   }
+  gitState.status = 'syncing';
   try {
     await gitExec(['add', 'data/']);
     try {
@@ -141,6 +146,9 @@ async function gitSync() {
     } catch (e) {
       if (e.stderr && (e.stderr.includes('nothing to commit') || e.stderr.includes('nothing added'))) {
         console.log('[git] nothing to commit, skip');
+        gitState.status = 'done';
+        gitState.lastSync = new Date().toISOString();
+        gitState.lastError = null;
         return;
       }
       throw e;
@@ -148,8 +156,13 @@ async function gitSync() {
     // Store credential via stdin helper, then push (URL without token)
     await gitExec(['-c', 'credential.helper=', '-c', `credential.helper=!f() { echo "username=${GIT_USER}"; echo "password=${GIT_TOKEN}"; }; f`, 'push', 'origin', 'main']);
     console.log('[git] sync done');
+    gitState.status = 'done';
+    gitState.lastSync = new Date().toISOString();
+    gitState.lastError = null;
   } catch (err) {
     console.error(`[git] error: ${err.stderr || err.message}`);
+    gitState.status = 'error';
+    gitState.lastError = (err.stderr || err.message || '未知错误').slice(0, 300);
   }
 }
 
@@ -457,6 +470,11 @@ app.post('/api/upload-images', imageUpload.array('images', 10), (req, res) => {
 // List images
 app.get('/api/images', (req, res) => {
   res.json(listImages());
+});
+
+// Git sync status
+app.get('/api/git-status', (req, res) => {
+  res.json({ ...gitState, tokenSet: !!GIT_TOKEN });
 });
 
 // Delete image (checks note references unless ?force=1)

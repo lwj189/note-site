@@ -41,5 +41,39 @@ if("serviceWorker"in navigator){navigator.serviceWorker.register("/sw.js")}
 function toggleMobileMenu(){var s=document.querySelector(".sidebar");var o=document.getElementById("sidebar-overlay");s.classList.toggle("open");o.classList.toggle("active")}
 function closeMobileMenu(){document.querySelector(".sidebar").classList.remove("open");document.getElementById("sidebar-overlay").classList.remove("active")}
 </script>
+
+<script>
+// Git 同步状态指示器
+(function() {
+  var el = document.getElementById('sidebar-git-status');
+  if (!el) return;
+  var lastDone = null;
+  function fmt(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) return '';
+    var now = new Date();
+    var diff = now - d;
+    if (diff < 60000) return '刚刚';
+    if (diff < 3600000) return Math.floor(diff / 60000) + ' 分钟前';
+    if (diff < 86400000) return '今天 ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    return (d.getMonth() + 1) + '/' + d.getDate();
+  }
+  function poll() {
+    fetch('/api/git-status').then(function(r) { return r.json(); }).then(function(s) {
+      if (!s.tokenSet) { el.textContent = 'Git 未启用'; el.className = 'sidebar-git-status disabled'; el.title = '未配置 GIT_TOKEN，笔记不会自动备份到 GitHub'; return; }
+      if (s.status === 'syncing' || s.status === 'pending') { el.textContent = '同步中…'; el.className = 'sidebar-git-status syncing'; el.title = '正在备份到 GitHub'; return; }
+      if (s.status === 'error') { el.textContent = '⚠ 同步失败'; el.className = 'sidebar-git-status error'; el.title = '上次同步失败：' + (s.lastError || '未知原因') + '\n可能未开加速器或网络断开，笔记仍保存在本地'; return; }
+      if (s.lastSync) lastDone = s.lastSync;
+      el.textContent = '已备份 ' + (lastDone ? fmt(lastDone) : '');
+      el.className = 'sidebar-git-status done';
+      el.title = '最近一次备份：' + (s.lastSync ? new Date(s.lastSync).toLocaleString() : '—');
+    }).catch(function() {
+      el.textContent = '⋯'; el.className = 'sidebar-git-status';
+    });
+  }
+  poll();
+  setInterval(poll, 5000);
+})();
+</script>
 </body>
 </html>
