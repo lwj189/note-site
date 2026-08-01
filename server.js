@@ -459,10 +459,17 @@ app.get('/api/images', (req, res) => {
   res.json(listImages());
 });
 
-// Delete image
+// Delete image (checks note references unless ?force=1)
 app.delete('/api/images/:filename', (req, res) => {
-  const filepath = path.join(UPLOADS_DIR, path.basename(req.params.filename));
+  const filename = path.basename(req.params.filename);
+  const filepath = path.join(UPLOADS_DIR, filename);
   if (!fs.existsSync(filepath)) return res.status(404).json({ error: 'not found' });
+  const refs = loadActiveNotes()
+    .filter(n => n.content && n.content.includes('/img/' + filename))
+    .map(n => ({ slug: n.slug, title: n.title }));
+  if (refs.length > 0 && req.query.force !== '1') {
+    return res.json({ ok: false, referenced: refs });
+  }
   fs.unlinkSync(filepath);
   debouncedGitSync();
   res.json({ ok: true });
