@@ -837,6 +837,18 @@ html.dark .note-header-actions .card-action-btn.active { background: #2e3550; }
   .note-toc-panel { left: 8px; right: 8px; width: auto; top: 56px; max-height: 50vh; }
 }
 
+/* 双链 */
+.note-body a.wikilink { color: var(--accent); text-decoration: none; border-bottom: 1px dashed var(--accent); }
+.note-body a.wikilink:hover { border-bottom-style: solid; }
+.note-body .wikilink-unresolved { color: var(--muted); opacity: .8; background: rgba(148,163,184,.12); border-radius: 4px; padding: 0 3px; cursor: default; }
+
+/* 反向链接 */
+.note-backlinks { margin-top: 36px; max-width: 900px; padding-top: 18px; border-top: 1px solid var(--border); }
+.note-backlinks h2 { font-size: 1.05rem; margin-bottom: 10px; }
+.note-backlinks ul { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.note-backlinks a { color: var(--accent); text-decoration: none; }
+.note-backlinks a:hover { text-decoration: underline; }
+
 .note-body h1, .note-body h2, .note-body h3 { margin-top: 1.5em; margin-bottom: .5em; }
 .note-body h1 { font-size: 1.5rem; }
 .note-body h2 { font-size: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
