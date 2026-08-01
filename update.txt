@@ -139,6 +139,15 @@
 
 - views/editor.ejs — 补全 toggleFullscreen()（原按钮 onclick 引用了未定义函数，点击报错无响应）；全屏时切换编辑区类名、固定保存栏、锁定背景滚动、按钮图标 ⛶/✕ 切换、Esc 退出全屏
 - public/style.css — 修正全屏样式：原 `.editor-area.fullscreen .editor-actions` 子选择器失效（保存栏不在编辑区内），改为 `.editor-actions.fullscreen` 固定底部；textarea/预览撑满视口并留出保存栏空间；body 滚动锁定
+
+## 改动十八：更换应用图标（文档/纸张造型）
+
+- electron/make-icon.js — 重写为程序化绘制"蓝底圆角 + 白色文档 + 右上折角 + 三条内容横线"图标，4x 超采样抗锯齿，一次生成各尺寸 PNG + ICO
+- electron/icon.png（256）、electron/icon.ico（桌面快捷方式用）— 应用窗口/任务栏图标
+- electron/tray.png（16）— 托盘图标；electron/main.js 改为优先加载 tray.png，缺失时回退旧蓝圆
+- public/icon-192.png、public/icon-512.png — 新建，修复 manifest.json 引用但文件不存在的 PWA 图标
+- views/header.ejs — 侧边栏 logo 由 ✦ 换成文档线条 SVG；新增 favicon 链接（此前 Web 版无 favicon）
+- 桌面快捷方式 IconLocation 指向 electron/icon.ico（此前是系统默认图标）
 - public/app.js — 新建笔记弹窗"创建并编辑"允许标题/网址留空，交给编辑器自动编号；占位提示更新为"留空自动编号"
 
 ---

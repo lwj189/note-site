@@ -26,24 +26,30 @@ if (!gotTheLock) {
 
 // ---- Create tray icon ----
 function createTray() {
-  // Create a 16x16 tray icon programmatically
-  const size = 16;
-  const canvas = Buffer.alloc(size * size * 4, 0);
-  const cx = 2, cy = 2, r = 6;
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const dx = x - (cx + r), dy = y - (cy + r);
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist <= r) {
-        const idx = (y * size + x) * 4;
-        canvas[idx] = 67;     // R
-        canvas[idx + 1] = 97; // G
-        canvas[idx + 2] = 238;// B
-        canvas[idx + 3] = 255;// A
+  // Prefer the generated tray.png (document glyph); fall back to a blue circle
+  let img;
+  const trayPath = path.join(__dirname, 'tray.png');
+  if (require('fs').existsSync(trayPath)) {
+    img = nativeImage.createFromPath(trayPath);
+  } else {
+    const size = 16;
+    const canvas = Buffer.alloc(size * size * 4, 0);
+    const cx = 2, cy = 2, r = 6;
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const dx = x - (cx + r), dy = y - (cy + r);
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist <= r) {
+          const idx = (y * size + x) * 4;
+          canvas[idx] = 67;     // R
+          canvas[idx + 1] = 97; // G
+          canvas[idx + 2] = 238;// B
+          canvas[idx + 3] = 255;// A
+        }
       }
     }
+    img = nativeImage.createFromBuffer(canvas, { width: size, height: size });
   }
-  const img = nativeImage.createFromBuffer(canvas, { width: size, height: size });
   tray = new Tray(img);
   tray.setToolTip('MyNote');
 
