@@ -69,6 +69,7 @@
   </div>
 
   <div class="sidebar-bottom">
+    <div class="sidebar-git-status" id="sidebar-git-status" title="Git 同步状态">⋯</div>
     <div class="sidebar-mode-badge" id="sidebar-mode-badge">🌐 网页版</div>
     <% if (typeof publicUrl !== 'undefined' && publicUrl) { %>
     <div class="sidebar-public-url" title="公网访问链接" onclick="navigator.clipboard.writeText('<%= publicUrl %>');this.classList.add('copied');setTimeout(()=>this.classList.remove('copied'),1500)">

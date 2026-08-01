@@ -125,6 +125,15 @@
 ## 改动十五：端口被占用自动换空闲端口
 
 - server.js — startServer 监听 3000 失败（EADDRINUSE）时自动改用系统分配的空闲端口，避免应用启动卡死；getPort() 返回实际端口供 Electron 加载
+
+## 改动十六：Git 同步状态可视化
+
+- server.js — 新增 GET /api/git-status，返回同步状态（idle/pending/syncing/done/error）、上次成功时间、错误信息、令牌是否配置
+- views/header.ejs — 侧边栏底部新增 Git 同步状态指示器
+- views/footer.ejs — 每 5 秒轮询同步状态，显示"已备份 x 分钟前 / 同步中 / 同步失败"
+- public/style.css — 状态指示器样式（同步中高亮、失败红色）
+
+> 注意：实测发现应用内自动同步一直在失败（GIT_TOKEN 令牌已失效，GitHub 返回 Invalid username or token），本功能首次暴露了此问题。需在 GitHub 生成新 Personal Access Token 并更新环境变量。
 - public/app.js — 新建笔记弹窗"创建并编辑"允许标题/网址留空，交给编辑器自动编号；占位提示更新为"留空自动编号"
 
 ---
