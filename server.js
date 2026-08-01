@@ -584,8 +584,8 @@ app.get('/api/next-name', (req, res) => {
   } else {
     const notes = loadActiveNotes();
     let num = 1;
-    while (notes.some(n => n.title === '新建笔记' + num)) num++;
-    res.json({ name: '新建笔记' + num });
+    while (notes.some(n => n.title === String(num) || n.slug === String(num))) num++;
+    res.json({ name: String(num) });
   }
 });
 

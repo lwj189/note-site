@@ -135,8 +135,8 @@ function showNewNote() {
     var html = '<div class="settings-overlay" onclick="closeModal(event,\'new-note-modal\')"><div class="settings-dialog" onclick="event.stopPropagation()">' +
       '<div class="settings-header"><span class="settings-title">新建笔记</span><button class="picker-close" onclick="closeModal(null,\'new-note-modal\')">&times;</button></div>' +
       '<div class="settings-body">' +
-        '<div class="modal-field"><label>标题</label><input type="text" id="nn-title" placeholder="笔记标题"></div>' +
-        '<div class="modal-field"><label>网址路径</label><input type="text" id="nn-slug" placeholder="自动生成"></div>' +
+        '<div class="modal-field"><label>标题</label><input type="text" id="nn-title" placeholder="留空自动编号"></div>' +
+        '<div class="modal-field"><label>网址路径</label><input type="text" id="nn-slug" placeholder="留空自动生成"></div>' +
         '<div class="modal-field"><label>类型</label><select id="nn-type"><option value="md">Markdown</option><option value="txt">纯文本</option></select></div>' +
         '<div class="modal-field"><label>标签</label><input type="text" id="nn-tags" placeholder="如: 工作, 待整理"></div>' +
       '</div>' +
@@ -148,7 +148,7 @@ function showNewNote() {
     var div = document.createElement('div'); div.id = 'new-note-modal'; div.innerHTML = html;
     document.body.appendChild(div);
     // Auto-fill suggestion
-    document.getElementById('nn-title').placeholder = '如: ' + d.name;
+    document.getElementById('nn-title').placeholder = '留空自动编号（如 ' + d.name + '）';
     document.getElementById('nn-title').addEventListener('input', function() {
       var slug = document.getElementById('nn-slug');
       if (!slug.dataset.touched) {
@@ -164,9 +164,9 @@ function submitNewNote() {
   var slug = document.getElementById('nn-slug').value.trim();
   var type = document.getElementById('nn-type').value;
   var tags = document.getElementById('nn-tags').value.trim();
-  if (!title) { alert('请输入标题'); return; }
-  if (!slug) { alert('请输入网址路径'); return; }
-  var qs = '?title=' + encodeURIComponent(title) + '&slug=' + encodeURIComponent(slug) + '&type=' + type;
+  var qs = '?type=' + type;
+  if (title) qs += '&title=' + encodeURIComponent(title);
+  if (slug) qs += '&slug=' + encodeURIComponent(slug);
   if (tags) qs += '&tags=' + encodeURIComponent(tags);
   window.location.href = '/new' + qs;
 }

@@ -38,11 +38,11 @@
     <div class="editor-meta" id="editor-meta" style="<%= isQuick ? 'display:none' : '' %>">
       <div class="editor-field">
         <label>标题</label>
-        <input type="text" name="title" id="e-title" value="<%= typeof note !== 'undefined' ? note.title : (typeof prefill !== 'undefined' ? prefill.title : '') %>" placeholder="笔记标题"<%= isQuick ? '' : ' required' %>>
+        <input type="text" name="title" id="e-title" value="<%= typeof note !== 'undefined' ? note.title : (typeof prefill !== 'undefined' ? prefill.title : '') %>" placeholder="笔记标题（留空自动编号）">
       </div>
       <div class="editor-field">
         <label>网址路径</label>
-        <input type="text" name="slug" id="e-slug" value="<%= typeof note !== 'undefined' ? note.slug : (typeof prefill !== 'undefined' ? prefill.slug : '') %>" placeholder="note-url-path"<%= isQuick ? '' : ' required' %>>
+        <input type="text" name="slug" id="e-slug" value="<%= typeof note !== 'undefined' ? note.slug : (typeof prefill !== 'undefined' ? prefill.slug : '') %>" placeholder="note-url-path（留空自动生成）">
       </div>
       <div class="editor-field">
         <label>类型</label>
@@ -78,7 +78,7 @@
     </div>
 
     <div class="editor-actions">
-      <button type="submit" class="btn"><%= typeof note !== 'undefined' ? '保存笔记' : (isQuick ? '保存（自动生成标题）' : '保存笔记') %></button>
+      <button type="submit" class="btn"><%= typeof note !== 'undefined' ? '保存笔记' : '保存（留空自动编号）' %></button>
       <% if (typeof note !== 'undefined') { %>
       <a href="/note/<%= encodeURIComponent(note.slug) %>" class="btn btn-outline" target="_blank">查看笔记</a>
       <% } %>
@@ -748,6 +748,7 @@ function showPreviewAfterInsert() {
 
 // ---- Form Submit ----
 const isQuick = <%= isQuick ? 'true' : 'false' %>;
+const isEdit = <%= typeof note !== 'undefined' ? 'true' : 'false' %>;
 function toggleMeta() {
   var meta = document.getElementById('editor-meta');
   if (meta.style.display === 'none') {
@@ -769,8 +770,8 @@ document.getElementById('editor-form').addEventListener('submit', async e => {
     var tags = document.getElementById('e-tags').value;
     var content = document.getElementById('e-content').value;
 
-    // Quick mode: auto-generate metadata
-    if (isQuick && !title) {
+    // 新建笔记：未填标题时自动编号（1、2、3…）
+    if (!isEdit && !title) {
       const resName = await fetch('/api/next-name?type=note');
       const d = await resName.json();
       title = d.name;
