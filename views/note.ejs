@@ -59,6 +59,51 @@
 </div>
 
 <script>
+// 待办清单勾选：点击 checkbox 切换并保存到笔记内容
+(function() {
+  var body = document.querySelector('.note-body');
+  var contentInput = document.getElementById('note-original-content');
+  if (!body || !contentInput) return;
+  var boxes = body.querySelectorAll('input[type="checkbox"]');
+  if (!boxes.length) return;
+
+  var SLUG = <%- JSON.stringify(note.slug) %>;
+  var TITLE = <%- JSON.stringify(note.title) %>;
+  var TYPE = <%- JSON.stringify(note.type) %>;
+  var TAGS = <%- JSON.stringify(note.tags ? note.tags.join(',') : '') %>;
+
+  function taskLines(content) {
+    var lines = content.split('\n');
+    var idx = [];
+    lines.forEach(function(line, i) { if (/^\s*[-*+]\s+\[[ xX]\]/.test(line)) idx.push(i); });
+    return { lines: lines, idx: idx };
+  }
+
+  function persist(lines, box) {
+    var content = lines.join('\n');
+    contentInput.value = content;
+    fetch('/api/notes', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: TITLE, slug: SLUG, content: content, type: TYPE, tags: TAGS })
+    }).then(function(r) { return r.json(); }).then(function(data) {
+      if (!data.ok) { box.checked = !box.checked; alert('保存失败：' + data.error); }
+    }).catch(function(err) { box.checked = !box.checked; alert('保存失败：' + err.message); });
+  }
+
+  boxes.forEach(function(box, i) {
+    box.disabled = false;
+    box.addEventListener('change', function() {
+      var src = taskLines(contentInput.value);
+      if (i >= src.idx.length) { box.checked = !box.checked; return; }
+      var line = src.lines[src.idx[i]];
+      src.lines[src.idx[i]] = line.replace(/\[[ xX]\]/, box.checked ? '[x]' : '[ ]');
+      persist(src.lines, box);
+    });
+  });
+})();
+</script>
+
+<script>
 // Image lightbox with zoom & pan
 var imgZoom = 1;
 var imgPanX = 0, imgPanY = 0;

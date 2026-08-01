@@ -788,6 +788,7 @@ mark {
   box-shadow: 0 1px 2px rgba(0,0,0,.06);
 }
 .note-body { line-height: 1.85; max-width: 900px; }
+.note-body input[type="checkbox"] { cursor: pointer; width: 16px; height: 16px; accent-color: var(--accent); margin-right: 8px; vertical-align: -2px; }
 
 .note-body h1, .note-body h2, .note-body h3 { margin-top: 1.5em; margin-bottom: .5em; }
 .note-body h1 { font-size: 1.5rem; }
