@@ -110,19 +110,32 @@ async function delImage(filename, event) {
   event.stopPropagation();
   if (!confirm('确定删除 ' + filename + ' 吗？')) return;
   try {
-    const res = await fetch('/api/images/' + encodeURIComponent(filename), { method: 'DELETE' });
-    const data = await res.json();
+    let res = await fetch('/api/images/' + encodeURIComponent(filename), { method: 'DELETE' });
+    let data = await res.json();
     if (data.ok) {
-      document.querySelector('.gallery-card[data-filename="' + filename + '"]').remove();
-      const count = document.querySelectorAll('.gallery-card').length;
-      document.querySelector('.gallery-count strong').textContent = count;
-      if (count === 0) location.reload();
+      removeCard(filename);
+    } else if (data.referenced && data.referenced.length) {
+      const titles = data.referenced.map(r => r.title).join('、');
+      const force = confirm('图片正被 ' + data.referenced.length + ' 篇笔记引用：\n' + titles +
+        '\n\n删除后这些笔记里的图片将无法显示。仍要删除吗？');
+      if (!force) return;
+      res = await fetch('/api/images/' + encodeURIComponent(filename) + '?force=1', { method: 'DELETE' });
+      data = await res.json();
+      if (data.ok) removeCard(filename);
+      else alert('删除失败：' + data.error);
     } else {
       alert('删除失败：' + data.error);
     }
   } catch (err) {
     alert('删除失败：' + err.message);
   }
+}
+
+function removeCard(filename) {
+  document.querySelector('.gallery-card[data-filename="' + filename + '"]').remove();
+  const count = document.querySelectorAll('.gallery-card').length;
+  document.querySelector('.gallery-count strong').textContent = count;
+  if (count === 0) location.reload();
 }
 
 // Drag-drop support
