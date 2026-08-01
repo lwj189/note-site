@@ -1,0 +1,212 @@
+<本次更新记录写在下方，历史记录已按时间顺序整理到上方>
+
+## 改动一：图库系统
+
+- views/gallery.ejs — 新建，网格展示图片缩略图，点击弹出 Lightbox 显示大图 + Markdown/URL/HTML 引用（可一键复制），每张图片悬浮显示删除按钮
+- views/home.ejs — 图片上传标签页改为多选上传，完成后链接到图库
+- views/header.ejs — 导航栏新增"图库"入口
+- server.js — 新增 4 个路由：/gallery 页面、/api/images 列表、/api/upload-images 多文件上传（最多 10张）、    /api/images/:filename 删除
+- public/style.css — 新增图库网格、Lightbox 弹出层、悬浮删除按钮等样式
+- views/home.ejs — 新增可折叠管理面板（<details>），包含撰写笔记、上传文件、上传图片、笔记列表 4 个标签页，笔记列表在下方展示
+- server.js — 路由支持 ?edit= 参数；旧上传路由改为 302 重定向到 /
+- public/style.css — 新增管理面板折叠按钮样式
+
+## 改动二：编辑器独立 + 管理面板精简
+
+1. 移除首页管理面板的图片上传功能
+   - views/home.ejs — 删除了"上传图片"tab 按钮、tab 面板及对应 JS
+   - 图片上传统一在图库页面进行
+2. 专用编辑页面
+   - server.js — 新增 GET /edit/:slug 路由
+   - views/edit.ejs — 新建独立编辑页面
+   - views/home.ejs — 编辑链接指向 /edit/:slug
+   - public/style.css — 编辑页响应式样式
+
+## 改动三：统一编辑器（Word 风格）
+
+架构调整
+- 删除首页管理面板的 3 个 tabs，改为：
+  - 一个 "+ 新建笔记" 按钮，指向 /new
+  - 简洁的笔记管理列表（查看 / 编辑 / 删除）
+- 新建统一编辑器页面（/new 和 /edit/:slug 共用 editor.ejs）
+
+编辑器功能
+- 工具栏：插入图片、插入文件（自动识别代码语言加围栏）、预览
+- 编辑区：标题/网址路径/类型三栏、520px 大编辑区、Ctrl+S 保存
+
+涉及文件
+- views/editor.ejs — 新建统一编辑器
+- views/edit.ejs — 删除
+- views/home.ejs — 精简管理面板
+- server.js — 新增 /new 路由，更新 /edit/:slug
+- public/style.css — 更新编辑器/工具栏样式
+
+## 改动四：侧边栏重构
+
+删除
+- views/upload.ejs — 合并到 editor.ejs
+- server.js — 删除 UPLOAD_SECRET 常量和 /upload-* 路由
+
+重写
+- views/header.ejs — 顶部导航栏改为左侧 260px 固定侧边栏
+- views/footer.ejs — 简化为闭合标签
+- public/style.css — 全面重构为 sidebar 布局
+
+修改
+- views/home.ejs — 欢迎 Hero + 最近笔记网格
+- views/list.ejs — 页面标题头
+- views/search.ejs — 删除搜索框
+- 所有视图 — 传递 current 导航高亮
+- server.js — current 变量、SITE_TITLE 改为 MyNote
+- public/app.js — 侧边栏 AJAX 加载最近笔记
+
+## 改动五：笔记卡片交互
+
+- views/home.ejs — 卡片 hover 显示编辑/删除按钮
+- views/list.ejs — flex 布局 + hover 操作按钮
+- public/app.js — delNoteCard 动画消散
+- public/style.css — card-actions 样式
+
+## 改动六：真实预览 + 笔记页操作
+
+- server.js — POST /api/render 渲染接口
+- views/editor.ejs — 真实预览、插入图片自动切预览
+- views/note.ejs — 标题右侧编辑/删除按钮
+- public/style.css — note-header flex 布局
+
+## 改动七：笔记本/标签 + 搜索增强
+
+- notes.json 新增 tags 字段，新增 notebooks.json
+- API：笔记本 CRUD、笔记标签支持
+- 搜索：分区展示、关键词高亮、时间筛选
+- UI：侧边栏笔记本、标签徽章、搜索页重写
+
+## 改动八：笔记本管理 + 设置 + 暗色主题
+
+- 笔记本 hover 编辑/删除、重命名自动更新标签
+- 设置面板：深色主题、字体大小、Git 同步、排序
+- 暗色主题完整 CSS 变量覆盖
+
+## 改动九：模态框 + 自动命名
+
+- 新建笔记/笔记本模态框
+- 自动生成标题/名称
+- 笔记页元数据编辑弹窗
+- API：/api/next-name
+
+## 改动十：图片交互增强
+
+- 笔记页图片点击灯箱放大
+- 编辑器图片拖拽缩放 + ResizeObserver 源码同步
+
+## 改动十一：修复编辑器无法新建/修改笔记（字面换行符语法错误）
+
+- views/editor.ejs — 修复 13 处单引号字符串内的真实换行符（JS 语法错误），改为 \n 转义
+  - 笔记模板（会议记录/学习/待办/日报/问题）5 处
+  - 插入图库图片 / 本地上传图片 / 插入文件 / 插入 .docx 共 8 处
+- 效果：新建笔记、修改笔记恢复可用；工具栏插入图片/文件、笔记模板一并恢复
+- 根因：之前只修了 mdFormat 函数的换行符，漏掉了模板和插入函数的剩余部分
+
+---
+
+更新日志：
+
+## 安全修复 + 回收站 + 文档整理
+
+### 安全（🔴）
+1. **禁用 SVG 上传** — 移除 imageUpload 中 .svg 扩展名，防止嵌入 XSS 脚本
+2. **安全响应头** — 添加 X-Content-Type-Options: nosniff、X-Frame-Options: DENY
+3. **Git 令牌安全** — 改用 execFile + stdin 凭证传递，令牌不再出现在命令行参数中
+
+### 回收站（🗑️）
+4. **软删除** — DELETE /api/notes/:slug 改为标记 deletedAt 字段，非真正删除
+5. **回收站页面** — 新增 GET /trash 页面，列出已删除笔记
+6. **还原** — POST /api/notes/:slug/restore 恢复笔记
+7. **永久删除** — DELETE /api/trash/:slug 彻底删除
+8. **清空回收站** — DELETE /api/trash 一键清空
+9. **侧边栏** — 添加"回收站"红色导航入口
+10. **视图过滤** — 常规路由使用 loadActiveNotes() 自动过滤已删除笔记
+
+### 文档整理
+11. **README.md** — 新建，合并 网站信息.md + 部署指南.md 内容
+12. **删除** — 网站信息.md、部署指南.md（已合并到 README.md）
+
+### 涉及文件
+- server.js — 回收站 API、安全头、Git 安全重构
+- views/trash.ejs — 新建回收站页面
+- views/header.ejs — 侧边栏回收站入口
+- public/style.css — 回收站样式、红色导航卡
+- README.md — 新建
+
+## 用户体验 + 性能改进
+
+### 用户体验
+1. **侧边栏实时搜索** — 输入即时 AJAX 过滤，200ms 防抖，显示前 8 条 + 查看全部链接
+2. **返回顶部按钮** — 笔记页右下角 ↑ 按钮，滚动超 300px 显示
+3. **图库 clipboard 修复** — 改用 navigator.clipboard.writeText，保留 fallback
+4. **移动端删除按钮** — 触屏设备下图库删除按钮始终可见
+
+### 性能
+5. **数据内存缓存** — loadNotes/loadNotebooks 改为读内存，写入 500ms 防抖刷盘
+6. **Git 防抖同步** — gitSync 改为 10 秒防抖，多次修改合并为一次提交
+
+### 涉及文件
+- server.js — 数据缓存层、Git 防抖
+- public/app.js — 侧边栏实时搜索 JS
+- public/style.css — 搜索下拉面板、返回顶部按钮、移动端删除、回收站导航
+- views/header.ejs — 搜索框改为实时搜索容器
+- views/footer.ejs — 返回顶部按钮 + JS
+- views/gallery.ejs — clipboard API 更新
+
+
+## 图片功能增强
+
+### 八向缩放
+1. **编辑器图片八向拖拽缩放** — 预览图片显示 8 个蓝色圆形把手（4 角 + 4 边），拖拽任意把手缩放
+2. **Shift 等比缩放** — 按住 Shift 拖拽保持宽高比
+3. **源码同步** — 缩放后自动将 Markdown 语法转为 <img width height> 保存尺寸
+
+### 灯箱增强
+4. **滚轮缩放** — 阅读页点击图片放大后，滚轮滚动即可缩放（0.5x ~ 5x）
+5. **拖拽平移** — 放大后可按住图片拖动查看细节
+6. **工具栏** — +/- 按钮、百分比显示、双击重置
+
+### 精确尺寸
+7. **图片尺寸工具栏** — 点击预览图片弹出浮动面板，手动输入宽/高精确像素值
+
+### 涉及文件
+- views/editor.ejs — 八向缩放逻辑 + 尺寸工具栏
+- views/note.ejs — 灯箱缩放/平移/工具栏
+- public/style.css — 缩放把手样式、尺寸工具栏样式、灯箱样式
+
+## 编辑器分屏预览
+
+1. **自动分屏** — 编辑含图片的笔记时，自动进入源码+预览双栏模式
+2. **实时预览** — 分屏模式下输入内容，预览区 400ms 防抖自动更新
+3. **一键切换** — 点击预览按钮在分屏/纯源码间切换
+
+### 涉及文件
+- views/editor.ejs — 分屏模式、实时预览、自动检测图片
+- public/style.css — 分屏布局样式
+
+## 全面 UX 改进（10项）
+
+1. **笔记元数据保护** — 修改标题/类型/标签不再破坏笔记内容
+2. **删除提示更新** — 所有删除按钮提示"移到回收站，可还原"
+3. **首页空状态引导** — 大图标 + 功能卡片引导
+4. **搜索页搜索框** — 搜索页面顶部添加搜索框
+5. **列表页排序一致** — 排序说明更新
+6. **图库拖拽上传** — 支持拖拽图片到虚线区域上传
+7. **笔记导出** — 笔记页新增导出按钮，下载为 .md 文件
+8. **搜索结果预览** — 标题匹配结果也显示内容摘要 + 高亮
+9. **按钮文字优化** — 编辑器预览按钮文字更清晰
+10. **拖拽区域暗色主题** — CSS 适配
+
+### 涉及文件
+- views/note.ejs — 隐藏原始内容字段、导出按钮、删除提示
+- views/home.ejs — 空状态引导
+- views/search.ejs — 搜索框、预览 + 高亮
+- views/list.ejs — 排序说明更新
+- views/gallery.ejs — 拖拽上传区域 + JS
+- public/style.css — 拖拽区域样式
+- public/app.js — 删除提示更新
