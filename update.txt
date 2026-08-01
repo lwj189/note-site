@@ -163,6 +163,11 @@
 - views/note.ejs — 笔记阅读页待办清单 checkbox 可点击，点击切换 [ ]/[x] 状态并自动保存到笔记内容（脚本内元数据用 <%- JSON.stringify %> 注入，避免被 HTML 转义）
 - public/style.css — .note-body input[type=checkbox] 指针光标、16px 尺寸、accent 主题色样式
 
+## 改动二十一：笔记目录大纲（TOC）
+
+- views/note.ejs — 笔记页新增"目录"按钮 + 悬浮目录面板：自动提取 h1~h4 标题生成索引，点击平滑滚动到对应章节，滚动时高亮当前章节；正文标题不足 2 个时自动隐藏目录按钮
+- public/style.css — 目录面板样式（固定悬浮、缩进分级、hover/当前章节高亮）、标题 scroll-margin-top、移动端全宽适配
+
 ---
 
 更新日志：
