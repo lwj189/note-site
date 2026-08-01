@@ -801,6 +801,7 @@ document.getElementById('editor-form').addEventListener('submit', async e => {
     if (data.ok) {
       r.className = 'result success';
       r.innerHTML = '已保存！<a href="/note/' + encodeURIComponent(data.slug) + '">查看</a>';
+      document.getElementById('e-title').value = title;
       document.getElementById('e-slug').value = data.slug;
     } else {
       r.className = 'result error';

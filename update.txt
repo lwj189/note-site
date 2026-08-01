@@ -117,6 +117,10 @@
 
 - server.js — DELETE /api/images/:filename 删除前先扫描活动笔记内容，若引用 /img/文件名 则返回 referenced 列表；加 ?force=1 强制删除
 - views/gallery.ejs — 删除被引用图片时二次确认，列出引用该图片的笔记标题，确认后强制删除
+
+## 改动十四：保存后标题回填
+
+- views/editor.ejs — 新建笔记自动编号后，保存成功把编号填回标题输入框，不再显示空白
 - public/app.js — 新建笔记弹窗"创建并编辑"允许标题/网址留空，交给编辑器自动编号；占位提示更新为"留空自动编号"
 
 ---
