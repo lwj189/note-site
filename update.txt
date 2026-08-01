@@ -158,6 +158,11 @@
 - public/style.css — 置顶星标金色高亮（含暗色主题）
 - public/app.js — 新建笔记弹窗"创建并编辑"允许标题/网址留空，交给编辑器自动编号；占位提示更新为"留空自动编号"
 
+## 改动二十：待办清单可点击勾选
+
+- views/note.ejs — 笔记阅读页待办清单 checkbox 可点击，点击切换 [ ]/[x] 状态并自动保存到笔记内容（脚本内元数据用 <%- JSON.stringify %> 注入，避免被 HTML 转义）
+- public/style.css — .note-body input[type=checkbox] 指针光标、16px 尺寸、accent 主题色样式
+
 ---
 
 更新日志：
