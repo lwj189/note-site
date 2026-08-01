@@ -714,17 +714,26 @@ let serverPort = PORT;
 
 function startServer() {
   return new Promise((resolve, reject) => {
-    try {
-      serverInstance = app.listen(PORT, '0.0.0.0', () => {
-        serverPort = serverInstance.address().port;
+    const attempt = (port) => {
+      const srv = app.listen(port, '0.0.0.0');
+      srv.once('error', (err) => {
+        if (err.code === 'EADDRINUSE' && port === PORT) {
+          console.log(`端口 ${PORT} 被占用，自动改用空闲端口`);
+          attempt(0); // let OS pick a free port
+        } else {
+          reject(err);
+        }
+      });
+      srv.once('listening', () => {
+        serverPort = srv.address().port;
+        serverInstance = srv;
         const localIP = getLocalIP();
         console.log(`Notes site 本地: http://localhost:${serverPort}`);
         console.log(`局域网访问:   http://${localIP}:${serverPort}`);
-        resolve(serverInstance);
+        resolve(srv);
       });
-    } catch (err) {
-      reject(err);
-    }
+    };
+    attempt(PORT);
   });
 }
 
