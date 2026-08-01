@@ -161,79 +161,11 @@ function mdFormat(type) {
 
 // ---- Templates ----
 const TEMPLATES = {
-  meeting: '# 会议记录 - [会议名称]
-
-**时间**： [日期]
-**参与人员**： [姓名]
-
-## 议题
-1. [议题一]
-2. [议题二]
-
-## 讨论内容
-- [关键点]
-
-## 行动项
-- [ ] [行动项] - 负责人：[姓名]
-- [ ] [行动项] - 截止：[日期]',
-  study: '# [学习主题]
-
-## 概述
-[内容总结]
-
-## 关键点
-- [点一]
-- [点二]
-
-## 代码示例
-```
-[示例代码]
-```
-
-## 总结
-- [心得体会]',
-  todo: '# 待办清单
-
-## [分类一]
-- [ ] [任务]
-- [ ] [任务]
-
-## [分类二]
-- [x] [已完成]
-- [ ] [待办]
-
----
-进度： [数字]%',
-  daily: '# [日期] 日报
-
-## 今日完成
-- [工作内容]
-- [工作内容]
-
-## 遇到的问题
-- [问题及解决方案]
-
-## 明日计划
-- [计划内容]',
-  problem: '# [问题标题]
-
-## 环境
-- 系统：[版本]
-
-## 问题描述
-[详细描述]
-
-## 排查过程
-1. [步骤一]
-2. [步骤二]
-
-## 解决方案
-```
-[解决方案代码/步骤]
-```
-
-## 预防措施
-- [措施]'
+  meeting: '# 会议记录 - [会议名称]\n\n**时间**： [日期]\n**参与人员**： [姓名]\n\n## 议题\n1. [议题一]\n2. [议题二]\n\n## 讨论内容\n- [关键点]\n\n## 行动项\n- [ ] [行动项] - 负责人：[姓名]\n- [ ] [行动项] - 截止：[日期]',
+  study: '# [学习主题]\n\n## 概述\n[内容总结]\n\n## 关键点\n- [点一]\n- [点二]\n\n## 代码示例\n```\n[示例代码]\n```\n\n## 总结\n- [心得体会]',
+  todo: '# 待办清单\n\n## [分类一]\n- [ ] [任务]\n- [ ] [任务]\n\n## [分类二]\n- [x] [已完成]\n- [ ] [待办]\n\n---\n进度： [数字]%',
+  daily: '# [日期] 日报\n\n## 今日完成\n- [工作内容]\n- [工作内容]\n\n## 遇到的问题\n- [问题及解决方案]\n\n## 明日计划\n- [计划内容]',
+  problem: '# [问题标题]\n\n## 环境\n- 系统：[版本]\n\n## 问题描述\n[详细描述]\n\n## 排查过程\n1. [步骤一]\n2. [步骤二]\n\n## 解决方案\n```\n[解决方案代码/步骤]\n```\n\n## 预防措施\n- [措施]'
 };
 
 function openTemplatePicker() {
@@ -253,6 +185,7 @@ function applyTemplate(name) {
   ta.focus();
   closeTemplatePicker();
 }
+</script>
 
 <div id="image-picker-overlay" class="picker-overlay" onclick="closeImagePicker(event)">
   <div class="picker-dialog" onclick="event.stopPropagation()">
@@ -308,6 +241,7 @@ let livePreviewTimer = null;
 let galleryImages = [];
 let pickerOpen = false;
 let selectedImages = new Set();
+var imageSizes = {};
 
 function insertAtCursor(text) {
   const start = textarea.selectionStart;
@@ -425,8 +359,7 @@ function insertSelectedImages() {
   let text = '';
   sorted.forEach(idx => {
     const img = galleryImages[idx];
-    text += '![' + img.filename + '](' + img.url + ')
-';
+    text += '![' + img.filename + '](' + img.url + ')\n';
   });
   insertAtCursor(text);
   closeImagePicker();
@@ -459,8 +392,7 @@ document.getElementById('picker-image-input').addEventListener('change', async f
       const res = await fetch('/api/upload-image', { method: 'POST', body: fd });
       const data = await res.json();
       if (data.ok) {
-        insertAtCursor(data.md + '
-');
+        insertAtCursor(data.md + '\n');
         inserted++;
         setTimeout(showPreviewAfterInsert, 150);
       }
@@ -497,18 +429,11 @@ document.getElementById('tb-file-input').addEventListener('change', function() {
     const lang = LANG_MAP[ext] || '';
     let text;
     if (lang && lang !== 'md' && lang !== 'txt') {
-      text = '```' + lang + '
-' + content + '
-```
-';
+      text = '```' + lang + '\n' + content + '\n```\n';
     } else if (lang === 'md') {
-      text = content + '
-';
+      text = content + '\n';
     } else {
-      text = '```
-' + content + '
-```
-';
+      text = '```\n' + content + '\n```\n';
     }
     insertAtCursor(text);
     showMsg('文件内容已插入');
@@ -528,8 +453,7 @@ async function insertDocxFile(file) {
     const res = await fetch('/api/parse-docx', { method: 'POST', body: fd });
     const data = await res.json();
     if (data.ok) {
-      insertAtCursor(data.text + '
-');
+      insertAtCursor(data.text + '\n');
       showMsg('.docx 内容已插入');
     } else {
       showMsg(data.error, true);
