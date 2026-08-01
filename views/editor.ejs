@@ -30,7 +30,7 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
       预览
       </button>
-    <div id="toolbar-msg" class="toolbar-msg"></div><button type="button" class="toolbar-btn" onclick="toggleFullscreen()" title="全屏写作" style="margin-left:auto">⛶</button><span id="word-count" style="font-size:.78rem;color:var(--muted);margin-left:12px"></span><span id="save-status" style="font-size:.78rem;color:var(--muted);margin-left:auto"></span>
+    <div id="toolbar-msg" class="toolbar-msg"></div><button type="button" id="tb-fs-btn" class="toolbar-btn" onclick="toggleFullscreen()" title="全屏写作" style="margin-left:auto">⛶</button><span id="word-count" style="font-size:.78rem;color:var(--muted);margin-left:12px"></span><span id="save-status" style="font-size:.78rem;color:var(--muted);margin-left:auto"></span>
   </div>
 
   <form id="editor-form">
@@ -532,6 +532,27 @@ async function togglePreview() {
     document.getElementById('editor-area').classList.remove('split');
   }
 }
+
+// Fullscreen writing
+function toggleFullscreen() {
+  const area = document.getElementById('editor-area');
+  const actions = document.querySelector('.editor-actions');
+  const btn = document.getElementById('tb-fs-btn');
+  const isFs = area.classList.toggle('fullscreen');
+  if (actions) actions.classList.toggle('fullscreen', isFs);
+  document.body.classList.toggle('fs-active', isFs);
+  if (btn) {
+    btn.textContent = isFs ? '✕' : '⛶';
+    btn.title = isFs ? '退出全屏' : '全屏写作';
+  }
+  if (isFs) textarea.focus();
+}
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    const area = document.getElementById('editor-area');
+    if (area && area.classList.contains('fullscreen')) toggleFullscreen();
+  }
+});
 
 // Live preview update in split mode
 textarea.addEventListener('input', function() {
