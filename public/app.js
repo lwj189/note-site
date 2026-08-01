@@ -62,18 +62,28 @@ function saveAndCloseSettings() {
     var notes = await res.json();
     if (!notes.length) { list.innerHTML = '<div class="sidebar-recent-loading">暂无笔记</div>'; return; }
     var s = loadSettings();
-    if (s.sort === 'created') notes.sort((a,b) => new Date(b.createdAt||b.updatedAt) - new Date(a.createdAt||a.updatedAt));
-    else if (s.sort === 'alpha') notes.sort((a,b) => a.title.localeCompare(b.title, 'zh'));
-    else notes.sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+    var pf = function(a,b){ return (b.pinned?1:0) - (a.pinned?1:0); };
+    if (s.sort === 'created') notes.sort((a,b) => pf(a,b) || new Date(b.createdAt||b.updatedAt) - new Date(a.createdAt||a.updatedAt));
+    else if (s.sort === 'alpha') notes.sort((a,b) => pf(a,b) || a.title.localeCompare(b.title, 'zh'));
+    else notes.sort((a,b) => pf(a,b) || new Date(b.updatedAt) - new Date(a.updatedAt));
     var recent = notes.slice(0, 8);
     list.innerHTML = recent.map(function(n) {
       return '<a href="/note/' + encodeURIComponent(n.slug) + '" class="sidebar-recent-item" title="' +
         n.title.replace(/"/g, '&quot;') + '">' +
-        n.title.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</a>';
+        (n.pinned ? '📌 ' : '') + n.title.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</a>';
     }).join('');
   } catch (err) { list.innerHTML = '<div class="sidebar-recent-loading">加载失败</div>'; }
 })();
 
+
+async function togglePinCard(btn, slug){
+  try {
+    const res = await fetch('/api/notes/' + encodeURIComponent(slug) + '/pin', { method: 'POST' });
+    const data = await res.json();
+    if (!data.ok) { alert('操作失败：' + data.error); return; }
+    location.reload();
+  } catch (err) { alert('操作失败：' + err.message); }
+}
 
 function backupData() {
   fetch('/api/backup').then(function(r){return r.json()}).then(function(data){

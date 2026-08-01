@@ -15,7 +15,7 @@
   <% notes.forEach(n => { %>
   <div class="note-card" data-slug="<%= n.slug %>">
     <a href="/note/<%= encodeURIComponent(n.slug) %>" class="note-card-link">
-      <h3><%= n.title %> <span class="badge"><%= n.type %></span></h3>
+      <h3><% if (n.pinned) { %><span title="已置顶">📌</span> <% } %><%= n.title %> <span class="badge"><%= n.type %></span></h3>
       <div class="meta"><%= new Date(n.updatedAt).toLocaleDateString('zh-CN') %> &middot; /note/<%= n.slug %></div>
       <% if (n.tags && n.tags.length) { %>
       <div class="tag-list">
@@ -26,6 +26,9 @@
       <% } %>
     </a>
     <div class="card-actions card-actions-inline">
+      <button class="card-action-btn card-pin-btn<%= n.pinned ? ' pinned' : '' %>" title="置顶/取消置顶" onclick="event.stopPropagation(); togglePinCard(this, '<%= n.slug %>')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      </button>
       <a href="/edit/<%= encodeURIComponent(n.slug) %>" class="card-action-btn card-edit" title="编辑" onclick="event.stopPropagation()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
       </a>

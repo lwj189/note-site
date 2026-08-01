@@ -148,6 +148,14 @@
 - public/icon-192.png、public/icon-512.png — 新建，修复 manifest.json 引用但文件不存在的 PWA 图标
 - views/header.ejs — 侧边栏 logo 由 ✦ 换成文档线条 SVG；新增 favicon 链接（此前 Web 版无 favicon）
 - 桌面快捷方式 IconLocation 指向 electron/icon.ico（此前是系统默认图标）
+
+## 改动十九：笔记置顶/收藏
+
+- server.js — 新增 POST /api/notes/:slug/pin 切换置顶；新增 pinnedFirst 排序辅助，首页/全部笔记/笔记本/搜索/API 均置顶优先
+- views/note.ejs — 笔记页操作栏新增置顶按钮（星标），点击切换"已置顶"
+- views/list.ejs、views/home.ejs — 卡片新增置顶星标按钮，置顶笔记标题前显示 📌
+- public/app.js — 侧边栏最近笔记置顶优先排序并显示 📌；togglePinCard 全局函数
+- public/style.css — 置顶星标金色高亮（含暗色主题）
 - public/app.js — 新建笔记弹窗"创建并编辑"允许标题/网址留空，交给编辑器自动编号；占位提示更新为"留空自动编号"
 
 ---
