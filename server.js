@@ -268,12 +268,17 @@ function formatSize(bytes) {
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
+// Comparator prefix: pinned notes always come first
+function pinnedFirst(a, b) {
+  return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0);
+}
+
 // ---- Public routes ----
 
 app.get('/', (req, res) => {
   const editSlug = req.query.edit || '';
   const notes = loadActiveNotes();
-  notes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  notes.sort((a, b) => pinnedFirst(a, b) || new Date(b.updatedAt) - new Date(a.updatedAt));
   const editNote = editSlug ? notes.find(n => n.slug === editSlug) : null;
   res.render('home', { notes, notebooks: loadNotebooks().map(n => ({ name: typeof n === 'string' ? n : n.name, color: typeof n === 'string' ? '#4361ee' : (n.color || '#4361ee'), icon: typeof n === 'string' ? '📁' : (n.icon || '📁'), count: notes.filter(x => x.tags && x.tags.includes(typeof n === 'string' ? n : n.name)).length })), site: SITE_TITLE, current: 'home', query: '', editNote });
 });
@@ -317,8 +322,8 @@ app.get('/search', (req, res) => {
     titleMatches = notes;
   }
 
-  titleMatches.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-  contentMatches.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  titleMatches.sort((a, b) => pinnedFirst(a, b) || new Date(b.updatedAt) - new Date(a.updatedAt));
+  contentMatches.sort((a, b) => pinnedFirst(a, b) || new Date(b.updatedAt) - new Date(a.updatedAt));
 
   res.render('search', {
     notes, site: SITE_TITLE, current: 'search', query: q,
@@ -357,7 +362,7 @@ app.get('/list', (req, res) => {
   if (filterNb) {
     listNotes = listNotes.filter(n => n.tags && n.tags.includes(filterNb));
   }
-  listNotes.sort((a, b) => a.title.localeCompare(b.title, 'zh'));
+  listNotes.sort((a, b) => pinnedFirst(a, b) || a.title.localeCompare(b.title, 'zh'));
   res.render('list', { notes: listNotes, notebooks, currentNb: filterNb, site: SITE_TITLE, current: 'list' });
 });
 
@@ -368,7 +373,7 @@ app.get('/gallery', (req, res) => {
 app.get('/notebook/:name', (req, res) => {
   const name = req.params.name;
   const notes = loadActiveNotes().filter(n => n.tags && n.tags.includes(name));
-  notes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  notes.sort((a, b) => pinnedFirst(a, b) || new Date(b.updatedAt) - new Date(a.updatedAt));
   res.render('notebook', { notes, notebook: name, site: SITE_TITLE, current: 'notebook', nbColor: getNotebookColor(name), nbIcon: getNotebookIcon(name) });
 });
 
@@ -506,6 +511,17 @@ app.delete('/api/notes/:slug', (req, res) => {
   res.json({ ok: true, slug: req.params.slug });
 });
 
+// Toggle pin (置顶)
+app.post('/api/notes/:slug/pin', (req, res) => {
+  const notes = loadNotes();
+  const note = notes.find(n => n.slug === req.params.slug && !n.deletedAt);
+  if (!note) return res.status(404).json({ error: 'not found' });
+  note.pinned = !note.pinned;
+  saveNotes(notes);
+  debouncedGitSync();
+  res.json({ ok: true, pinned: note.pinned });
+});
+
 // List trash
 app.get('/api/trash', (req, res) => {
   const notes = loadNotes().filter(n => n.deletedAt)
@@ -548,7 +564,9 @@ app.delete('/api/trash', (req, res) => {
 
 // JSON API
 app.get('/api/notes', (req, res) => {
-  res.json(loadActiveNotes().map(n => ({ slug: n.slug, title: n.title, type: n.type, tags: n.tags || [], updatedAt: n.updatedAt })));
+  const notes = loadActiveNotes().map(n => ({ slug: n.slug, title: n.title, type: n.type, tags: n.tags || [], pinned: !!n.pinned, updatedAt: n.updatedAt, createdAt: n.createdAt }));
+  notes.sort((a, b) => pinnedFirst(a, b) || new Date(b.updatedAt) - new Date(a.updatedAt));
+  res.json(notes);
 });
 
 // Trash page

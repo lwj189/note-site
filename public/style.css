@@ -690,6 +690,9 @@ main {
 .card-action-btn:hover { transform: scale(1.08); }
 .card-edit:hover { background: #eef2ff; color: var(--accent); }
 .card-del:hover { background: #fef2f2; color: #dc2626; }
+.card-pin-btn:hover { background: #fffbeb; color: #f59e0b; }
+.card-pin-btn.pinned { background: #fffbeb; color: #f59e0b; }
+html.dark .card-pin-btn.pinned, html.dark .card-pin-btn:hover { background: #3a2f10; color: #fbbf24; }
 
 /* Tag badges */
 .tag-list {
