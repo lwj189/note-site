@@ -232,9 +232,37 @@ const LANG_MAP = {
 };
 
 function renderContent(note) {
-  if (note.type === 'md') return marked.parse(note.content);
+  if (note.type === 'md') return marked.parse(wikiLinkify(note.content));
   if (note.type === 'txt') return '<pre class="plain">' + esc(note.content) + '</pre>';
   return marked.parse('```' + note.type + '\n' + note.content + '\n```');
+}
+
+// 双链：把 [[标题]] / [[标题|显示文字]] 渲染为指向对应笔记的链接，未创建的笔记显示为灰色占位
+function wikiLinkify(content) {
+  const notes = loadActiveNotes();
+  const byTitle = new Map();
+  notes.forEach(n => byTitle.set(n.title, n.slug));
+  const resolve = (name) => byTitle.get(name) || (notes.some(n => n.slug === name) ? name : null);
+  // 保留围栏代码块原样，只处理代码块外的 [[...]]
+  return content.split(/(```[\s\S]*?```)/g).map((seg, i) => {
+    if (i % 2 === 1) return seg;
+    return seg.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (m, name, display) => {
+      const text = (display || name).trim();
+      const slug = resolve(name.trim());
+      if (slug) return '<a href="/note/' + encodeURIComponent(slug) + '" class="wikilink">' + esc(text) + '</a>';
+      return '<span class="wikilink-unresolved" title="尚未创建该笔记">' + esc(text) + '</span>';
+    });
+  }).join('');
+}
+
+// 反向链接：找出内容中通过 [[标题]]/[[slug]] 引用了该笔记的其他笔记
+function getBacklinks(note) {
+  const notes = loadActiveNotes();
+  const byTitle = new Map();
+  notes.forEach(n => byTitle.set(n.title, n.slug));
+  const refs = (content) => [...content.matchAll(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g)].map(m => m[1].trim());
+  return notes.filter(n => n.slug !== note.slug && n.content.includes('[[') &&
+    refs(n.content).some(name => (byTitle.get(name) === note.slug) || name === note.slug));
 }
 
 function esc(s) {
@@ -335,7 +363,8 @@ app.get('/search', (req, res) => {
 app.get('/note/:slug', (req, res) => {
   const note = loadActiveNotes().find(n => n.slug === req.params.slug);
   if (!note) return res.status(404).render('404', { site: SITE_TITLE });
-  res.render('note', { note, html: renderContent(note), site: SITE_TITLE, current: 'note' });
+  const backlinks = getBacklinks(note);
+  res.render('note', { note, html: renderContent(note), backlinks, site: SITE_TITLE, current: 'note' });
 });
 
 app.get('/new', (req, res) => {
