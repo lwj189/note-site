@@ -184,6 +184,11 @@
 - data/notes.json — 新增笔记「计网 第4章 学习笔记(网络层)」(slug: 计网-第4章-学习笔记，type: md，标签: 计算机)
 - 内容覆盖网络层核心:两种服务(虚电路/数据报)、IP协议(虚拟互连/分类地址/ARP/IP数据报首部/分组转发流程)、子网划分与CIDR(子网掩码/最长前缀匹配/路由聚合)、ICMP与PING原理、路由选择协议(RIP/OSPF/BGP/路由器构成)、IPv6与过渡策略(双协议栈/隧道)、IP多播与IGMP、VPN与NAT穿透
 
+## 改动二十五：导入桌面学习计划 study_plan.md
+
+- data/notes.json — 新增笔记「10天学习计划(BookStore + AI SDK)」(slug: 10天学习计划，type: md，标签: 计算机)
+- 内容从桌面 C:\Users\27259\Desktop\study_plan.md 原样导入(已校验与源文件完全一致):10天 C++ 后端学习计划(补计网→HTTP服务器→epoll→MySQL BookStore→AI SDK)，含每天任务/完成标准/优先级取舍
+
 ---
 
 更新日志：
