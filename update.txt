@@ -189,6 +189,10 @@
 - data/notes.json — 新增笔记「10天学习计划(BookStore + AI SDK)」(slug: 10天学习计划，type: md，标签: 计算机)
 - 内容从桌面 C:\Users\27259\Desktop\study_plan.md 原样导入(已校验与源文件完全一致):10天 C++ 后端学习计划(补计网→HTTP服务器→epoll→MySQL BookStore→AI SDK)，含每天任务/完成标准/优先级取舍
 
+## 改动二十六：修复图片缩放方向反了
+
+- views/editor.ejs — 修复 8 向缩放手柄：拖左(w)/上(n)或含 w/n 的角手柄时，同步平移外层容器，使对侧边缘保持不动、被拖边缘跟随鼠标；此前图片始终锚定左上角，拖左边向左拉会向右扩张（方向相反）
+
 ---
 
 更新日志：

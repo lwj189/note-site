@@ -698,6 +698,8 @@ function makeImageResizable(img) {
       e.stopPropagation();
       var startX = e.clientX, startY = e.clientY;
       var startW = img.offsetWidth, startH = img.offsetHeight;
+      var startLeft = parseFloat(wrapper.style.left) || 0;
+      var startTop = parseFloat(wrapper.style.top) || 0;
       var shiftLock = false;
 
       function onMove(me) {
@@ -738,6 +740,12 @@ function makeImageResizable(img) {
 
         img.style.width = newW + 'px';
         img.style.height = newH + 'px';
+
+        // 拖左/上边缘时同步平移容器，保持对侧边缘不动，被拖边缘跟随鼠标
+        var shiftL = dir.indexOf('w') !== -1 ? startW - newW : 0;
+        var shiftT = dir.indexOf('n') !== -1 ? startH - newH : 0;
+        wrapper.style.left = (startLeft + shiftL) + 'px';
+        wrapper.style.top = (startTop + shiftT) + 'px';
       }
 
       function onUp() {
