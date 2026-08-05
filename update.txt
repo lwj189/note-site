@@ -193,6 +193,11 @@
 
 - views/editor.ejs — 修复 8 向缩放手柄：拖左(w)/上(n)或含 w/n 的角手柄时，同步平移外层容器，使对侧边缘保持不动、被拖边缘跟随鼠标；此前图片始终锚定左上角，拖左边向左拉会向右扩张（方向相反）
 
+## 改动二十七：图片缩放尺寸持久化
+
+- server.js — 渲染后按 note.imgSizes 给 <img> 注入 width/height；更新笔记时若提交了 imgSizes 则同步保存（此前更新分支遗漏，缩放尺寸只存内存、刷新后丢失）
+- views/editor.ejs — 编辑已有笔记时从 note.imgSizes 恢复 imageSizes；渲染预览时套用保存的尺寸
+
 ---
 
 更新日志：

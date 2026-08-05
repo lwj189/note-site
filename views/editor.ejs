@@ -241,7 +241,7 @@ let livePreviewTimer = null;
 let galleryImages = [];
 let pickerOpen = false;
 let selectedImages = new Set();
-var imageSizes = {};
+var imageSizes = <%- JSON.stringify(typeof note !== 'undefined' && note.imgSizes ? note.imgSizes : {}) %>;
 
 function insertAtCursor(text) {
   const start = textarea.selectionStart;
@@ -484,6 +484,12 @@ async function renderPreview() {
       // Make images resizable with 8-directional handles
       preview.querySelectorAll('img').forEach(img => {
         makeImageResizable(img);
+        // 恢复已保存的尺寸
+        const url = img.getAttribute('src');
+        if (url && imageSizes[url] && imageSizes[url].w && imageSizes[url].h) {
+          img.style.width = imageSizes[url].w + 'px';
+          img.style.height = imageSizes[url].h + 'px';
+        }
       });
     } else {
       preview.innerHTML = '<div class="preview-empty">渲染失败</div>';

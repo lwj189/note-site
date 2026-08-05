@@ -232,9 +232,21 @@ const LANG_MAP = {
 };
 
 function renderContent(note) {
-  if (note.type === 'md') return marked.parse(wikiLinkify(note.content));
+  if (note.type === 'md') return applyImgSizes(marked.parse(wikiLinkify(note.content)), note.imgSizes || {});
   if (note.type === 'txt') return '<pre class="plain">' + esc(note.content) + '</pre>';
   return marked.parse('```' + note.type + '\n' + note.content + '\n```');
+}
+
+// 把保存过的图片尺寸(imgSizes)套用到渲染结果里的 <img> 标签上
+function applyImgSizes(html, sizes) {
+  if (!sizes || !Object.keys(sizes).length) return html;
+  return html.replace(/<img([^>]*)>/g, (m, attrs) => {
+    const src = (attrs.match(/src="([^"]*)"/) || [])[1];
+    if (!src || /width=/.test(attrs)) return m;
+    const s = sizes[src];
+    if (s && s.w && s.h) return '<img' + attrs + ' width="' + s.w + '" height="' + s.h + '">';
+    return m;
+  });
 }
 
 // 双链：把 [[标题]] / [[标题|显示文字]] 渲染为指向对应笔记的链接，未创建的笔记显示为灰色占位
@@ -433,6 +445,7 @@ app.post('/api/notes', (req, res) => {
     existing.content = content;
     existing.type = type || 'md';
     existing.tags = parsedTags;
+    if (req.body.imgSizes) existing.imgSizes = req.body.imgSizes;
     existing.updatedAt = now;
   } else {
     notes.push({ id: crypto.randomBytes(8).toString('hex'), slug, title, content, type: type || 'md', tags: parsedTags, imgSizes: req.body.imgSizes || {}, createdAt: now, updatedAt: now });
