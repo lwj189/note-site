@@ -4,3 +4,6 @@ data/uploads/*
 .env
 *.zip
 electron/make-icon.js
+
+# 笔记正文只保存在本地，不推送到 GitHub（保留 notebooks.json 以维持目录结构）
+data/notes.json
