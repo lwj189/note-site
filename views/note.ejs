@@ -1,4 +1,4 @@
-﻿<%- include('header', { heading: note.title, current: typeof current !== 'undefined' ? current : '' }) %>
+<%- include('header', { heading: note.title, current: typeof current !== 'undefined' ? current : '' }) %>
 
 <article>
   <div class="note-header">
@@ -311,12 +311,23 @@ function editNoteMeta(slug, title, type, tags) {
     '<div class="settings-body">' +
       '<div class="modal-field"><label>标题</label><input type="text" id="nm-title" value="' + title.replace(/"/g, '&quot;') + '"></div>' +
       '<div class="modal-field"><label>类型</label><select id="nm-type"><option value="md"' + (type==='md'?' selected':'') + '>Markdown</option><option value="txt"' + (type==='txt'?' selected':'') + '>纯文本</option><option value="cpp"' + (type==='cpp'?' selected':'') + '>C++</option><option value="python"' + (type==='python'?' selected':'') + '>Python</option><option value="javascript"' + (type==='javascript'?' selected':'') + '>JavaScript</option></select></div>' +
-      '<div class="modal-field"><label>标签</label><input type="text" id="nm-tags" value="' + tags.replace(/"/g, '&quot;') + '"></div>' +
+      '<div class="modal-field"><label>笔记本 / 标签（点击选择，可多选）</label><div id="nm-nb-picker" class="nb-picker"></div><input type="hidden" id="nm-tags" value="' + tags.replace(/"/g, '&quot;') + '"></div>' +
     '</div>' +
     '<div class="settings-footer"><button class="btn" onclick="saveNoteMeta(\'' + slug + '\')">保存</button></div>' +
   '</div></div>';
   var div = document.createElement('div'); div.id = 'note-meta-modal'; div.innerHTML = html;
   document.body.appendChild(div);
+  if (typeof createNotebookPicker === 'function') {
+    var nbRoot = document.getElementById('nm-nb-picker');
+    var nbHidden = document.getElementById('nm-tags');
+    if (nbRoot && nbHidden) {
+      createNotebookPicker(nbRoot, {
+        all: (typeof NOTEBOOKS_ALL !== 'undefined' ? NOTEBOOKS_ALL : []),
+        selected: (nbHidden.value || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean),
+        hiddenInput: nbHidden
+      });
+    }
+  }
 }
 function closeNoteMeta(e) {
   if (e && e.target !== document.querySelector('#note-meta-modal .settings-overlay')) return;
@@ -337,6 +348,12 @@ async function saveNoteMeta(slug) {
     else alert(data.error);
   } catch(err) { alert('保存失败：' + err.message); }
 }
+</script>
+
+<script src="/notebook-picker.js"></script>
+<script>
+// 笔记本清单（供"设置"弹窗里的选择器使用）
+var NOTEBOOKS_ALL = <%- JSON.stringify(typeof notebooks !== 'undefined' ? notebooks : []) %>;
 </script>
 
 <%- include('footer') %>

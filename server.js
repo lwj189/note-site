@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const multer = require('multer');
 const { marked } = require('marked');
 const hljs = require('highlight.js');
@@ -61,6 +61,30 @@ function saveNotebooks(notebooks) {
 // Normalize notebook format (support old string[] and new object[])
 function getNotebookNames() {
   return loadNotebooks().map(n => typeof n === 'string' ? n : n.name);
+}
+
+// [{name, color, icon}] —— 笔记本列表（供页面渲染选择器）
+function getNotebookList() {
+  return loadNotebooks().map(n => ({
+    name: typeof n === 'string' ? n : n.name,
+    color: typeof n === 'string' ? '#4361ee' : (n.color || '#4361ee'),
+    icon: typeof n === 'string' ? '📁' : (n.icon || '📁')
+  }));
+}
+
+// 笔记本 + 已存在于笔记中的散标签（保证旧标签也能被选到）
+function getNotebookChoices() {
+  const list = getNotebookList();
+  const seen = new Set(list.map(n => n.name));
+  loadActiveNotes().forEach(n => {
+    (n.tags || []).forEach(t => {
+      if (t && !seen.has(t)) {
+        seen.add(t);
+        list.push({ name: t, color: '#64748b', icon: '🏷' });
+      }
+    });
+  });
+  return list;
 }
 
 function getNotebookColor(name) {
@@ -376,7 +400,7 @@ app.get('/note/:slug', (req, res) => {
   const note = loadActiveNotes().find(n => n.slug === req.params.slug);
   if (!note) return res.status(404).render('404', { site: SITE_TITLE });
   const backlinks = getBacklinks(note);
-  res.render('note', { note, html: renderContent(note), backlinks, site: SITE_TITLE, current: 'note' });
+  res.render('note', { note, html: renderContent(note), backlinks, notebooks: getNotebookChoices(), site: SITE_TITLE, current: 'note' });
 });
 
 app.get('/new', (req, res) => {
@@ -387,13 +411,13 @@ app.get('/new', (req, res) => {
     type: req.query.type || 'md',
     tags: req.query.tags || ''
   };
-  res.render('editor', { site: SITE_TITLE, current: 'editor', prefill, quick });
+  res.render('editor', { site: SITE_TITLE, current: 'editor', prefill, quick, notebooks: getNotebookChoices() });
 });
 
 app.get('/edit/:slug', (req, res) => {
   const note = loadActiveNotes().find(n => n.slug === req.params.slug);
   if (!note) return res.status(404).render('404', { site: SITE_TITLE });
-  res.render('editor', { note, site: SITE_TITLE, current: 'editor' });
+  res.render('editor', { note, site: SITE_TITLE, current: 'editor', notebooks: getNotebookChoices() });
 });
 
 app.get('/list', (req, res) => {
@@ -636,11 +660,14 @@ app.get('/api/notebooks', (req, res) => {
 });
 
 app.post('/api/notebooks', (req, res) => {
-  const { name, notes: noteSlugs } = req.body;
+  const { name, notes: noteSlugs, color, icon } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: '名称不能为空' });
+  const newName = name.trim();
   const notebooks = loadNotebooks();
-  if (notebooks.includes(name.trim())) return res.status(400).json({ error: '笔记本已存在' });
-  notebooks.push(name.trim());
+  if (getNotebookNames().includes(newName)) return res.status(400).json({ error: '笔记本已存在' });
+  const nbColor = color || '#4361ee';
+  const nbIcon = icon || '📁';
+  notebooks.push({ name: newName, color: nbColor, icon: nbIcon });
   saveNotebooks(notebooks);
   // Add tag to selected notes
   if (noteSlugs && noteSlugs.length) {
@@ -649,13 +676,13 @@ app.post('/api/notebooks', (req, res) => {
       const n = allNotes.find(x => x.slug === slug);
       if (n) {
         if (!n.tags) n.tags = [];
-        if (!n.tags.includes(name.trim())) n.tags.push(name.trim());
+        if (!n.tags.includes(newName)) n.tags.push(newName);
       }
     });
     saveNotes(allNotes);
     debouncedGitSync();
   }
-  res.json({ ok: true, name: name.trim() });
+  res.json({ ok: true, name: newName, color: nbColor, icon: nbIcon });
 });
 
 // Auto-name for new notes/notebooks
@@ -711,7 +738,7 @@ app.put('/api/notebooks/:name', (req, res) => {
 app.delete('/api/notebooks/:name', (req, res) => {
   const action = req.query.action || 'delete';
   const notebooks = loadNotebooks();
-  const idx = notebooks.indexOf(req.params.name);
+  const idx = notebooks.findIndex(n => (typeof n === 'string' ? n : n.name) === req.params.name);
   if (idx === -1) return res.status(404).json({ error: 'not found' });
 
   if (action === 'untag') {

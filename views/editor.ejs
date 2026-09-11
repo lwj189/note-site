@@ -67,8 +67,9 @@
         </select>
       </div>
       <div class="editor-field">
-        <label>标签（逗号分隔）</label>
-        <input type="text" name="tags" id="e-tags" value="<%= typeof note !== 'undefined' && note.tags ? note.tags.join(', ') : (typeof prefill !== 'undefined' ? prefill.tags : '') %>" placeholder="如: 工作, 待整理, 灵感">
+        <label>笔记本 / 标签（点击选择，可多选）</label>
+        <div id="nb-picker" class="nb-picker"></div>
+        <input type="hidden" name="tags" id="e-tags" value="<%= typeof note !== 'undefined' && note.tags ? note.tags.join(', ') : (typeof prefill !== 'undefined' ? prefill.tags : '') %>">
       </div>
     </div>
 
@@ -855,6 +856,23 @@ document.addEventListener('keydown', function(e) {
     document.getElementById('editor-form').dispatchEvent(new Event('submit'));
   }
 });
+</script>
+
+<script src="/notebook-picker.js"></script>
+<script>
+// 笔记本选择器：可多选芯片 + 现场新建笔记本 / 自定义标签
+(function () {
+  var hidden = document.getElementById('e-tags');
+  var root = document.getElementById('nb-picker');
+  if (!hidden || !root || typeof createNotebookPicker !== 'function') return;
+  var all = <%- JSON.stringify(typeof notebooks !== 'undefined' ? notebooks : []) %>;
+  var initial = (hidden.value || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+  window.nbPicker = createNotebookPicker(root, {
+    all: all,
+    selected: initial,
+    hiddenInput: hidden
+  });
+})();
 </script>
 
 <%- include('footer') %>

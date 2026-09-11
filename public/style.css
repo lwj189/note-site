@@ -1876,3 +1876,43 @@ body { font-size: calc(1rem * var(--font-scale, 1)); }
   .sidebar-recent { display: none; }
   .sidebar-notebooks\.nav-card,\n  .sidebar-notebook-list-inside { display: none; }
 }
+
+/* ---- 笔记本选择器（编辑器 / 笔记设置弹窗共用） ---- */
+.nb-picker { display: flex; flex-direction: column; gap: 8px; }
+.nb-chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.nb-empty { font-size: .82rem; color: var(--muted); }
+.nb-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 999px;
+  border: 1.5px solid var(--border); background: transparent;
+  color: var(--fg); font-size: .85rem; font-family: inherit;
+  cursor: pointer; transition: all .15s; line-height: 1.2;
+}
+.nb-chip:hover { border-color: var(--nb-color, var(--accent)); }
+.nb-chip.active {
+  background: rgba(67,97,238,.12);
+  background: color-mix(in srgb, var(--nb-color, var(--accent)) 15%, transparent);
+  border-color: var(--nb-color, var(--accent));
+  color: var(--nb-color, var(--accent));
+  font-weight: 600;
+}
+html.dark .nb-chip.active { color: var(--fg); }
+.nb-chip-ico { font-size: .95rem; }
+.nb-chip-x { opacity: .6; font-size: .95rem; }
+.nb-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.nb-new-input {
+  flex: 1 1 200px; min-width: 160px;
+  padding: 7px 12px; font-size: .85rem; font-family: inherit;
+  border: 1.5px solid var(--border); border-radius: 8px;
+  background: var(--input-bg, #fff); color: var(--fg);
+}
+.nb-new-input:focus { outline: none; border-color: var(--accent); }
+.nb-tool-btn {
+  padding: 7px 12px; font-size: .82rem; font-family: inherit; font-weight: 500;
+  border-radius: 8px; border: 1.5px solid var(--accent);
+  background: var(--accent); color: #fff; cursor: pointer; transition: all .15s;
+}
+.nb-tool-btn:hover { background: var(--accent-hover); }
+.nb-tool-btn-ghost { background: transparent; color: var(--accent); }
+.nb-tool-btn-ghost:hover { background: rgba(67,97,238,.1); color: var(--accent); }
+.nb-tool-msg { font-size: .78rem; color: var(--muted); }
