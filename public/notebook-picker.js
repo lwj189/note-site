@@ -3,6 +3,24 @@
  * 选择结果写回 hiddenInput（逗号分隔），与原有 tags 字段完全兼容。
  */
 (function () {
+  // 安全读取 JSON 响应：服务器返回 HTML（413/404/500 错误页）时给出可读提示，
+  // 而不是让前端抛出 "Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON"
+  function readJSON(res) {
+    return res.text().then(function (text) {
+      var ct = res.headers.get('content-type') || '';
+      if (ct.indexOf('application/json') >= 0) {
+        try { return JSON.parse(text); }
+        catch (e) { throw new Error('服务器返回的 JSON 无法解析（HTTP ' + res.status + '）'); }
+      }
+      var tip = '服务器返回了非 JSON 响应（HTTP ' + res.status + '）';
+      if (res.status === 413) tip = '内容过大，超过服务器允许的请求体上限（HTTP 413）';
+      else if (res.status === 404) tip = '接口不存在（HTTP 404），可能是应用还没重启加载新代码';
+      else if (res.status >= 500) tip = '服务器内部错误（HTTP ' + res.status + '）';
+      throw new Error(tip);
+    });
+  }
+  window.readJSON = readJSON;
+
   function createNotebookPicker(root, opts) {
     if (!root) return null;
     opts = opts || {};
@@ -117,7 +135,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: name })
-        }).then(function (r) { return r.json(); }).then(function (d) {
+        }).then(readJSON).then(function (d) {
           busy = false;
           if (!d || !d.ok) { msg.textContent = (d && d.error) || '创建失败'; return; }
           ensure(d.name, d.color, d.icon);

@@ -208,8 +208,9 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/img', express.static(UPLOADS_DIR));
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+// 笔记正文可能很大（单篇可达上百 KB），必须放宽请求体上限，否则保存会返回 413
+app.use(express.json({ limit: '50mb' }));
 
 // ---- Security headers ----
 app.use((req, res, next) => {
@@ -769,8 +770,7 @@ app.post('/api/render', (req, res) => {
   }
 });
 
-// 404
-app.use((req, res) => res.status(404).render('404', { site: SITE_TITLE, current: '404' }));
+// 404 与错误处理统一放在所有路由之后（见文件末尾），否则会拦截后面的 /api/backup、/api/restore
 
 
 // ---- Backup & Restore ----
@@ -798,6 +798,30 @@ app.post("/api/restore", express.json({limit:"50mb"}), (req, res) => {
     notebooksCache = data.notebooks;
   }
   res.json({ok: true, notesCount: data.notes ? data.notes.length : 0});
+});
+
+// ---- 404 与错误处理（必须在所有路由之后）----
+function isApiRequest(req) {
+  return (req.path || '').startsWith('/api/');
+}
+
+// /api/* 一律返回 JSON，避免前端拿到 HTML 时报 "Unexpected token '<'"
+app.use((req, res) => {
+  if (isApiRequest(req)) {
+    return res.status(404).json({ ok: false, error: '接口不存在：' + req.method + ' ' + req.path });
+  }
+  res.status(404).render('404', { site: SITE_TITLE, current: '404' });
+});
+
+// 统一错误处理：API 请求返回 JSON（含 413 请求体过大等）
+app.use((err, req, res, next) => {
+  const status = err.status || err.statusCode || 500;
+  console.error('[error] ' + req.method + ' ' + req.path + ' -> ' + status + ': ' + err.message);
+  if (isApiRequest(req)) {
+    const hint = status === 413 ? '内容过大，超过服务器允许的请求体上限' : (err.message || '服务器内部错误');
+    return res.status(status).json({ ok: false, error: hint });
+  }
+  res.status(status).type('text/plain').send('服务器错误：' + (err.message || status));
 });
 
 // ---- Start ----

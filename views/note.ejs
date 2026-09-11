@@ -343,7 +343,7 @@ async function saveNoteMeta(slug) {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title: title, slug: slug, content: document.getElementById('note-original-content').value, type: type, tags: tags })
     });
-    var data = await res.json();
+    var data = (typeof readJSON === 'function') ? await readJSON(res) : await res.json();
     if (data.ok) window.location.reload();
     else alert(data.error);
   } catch(err) { alert('保存失败：' + err.message); }

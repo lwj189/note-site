@@ -809,7 +809,7 @@ document.getElementById('editor-form').addEventListener('submit', async e => {
     // 新建笔记：未填标题时自动编号（1、2、3…）
     if (!isEdit && !title) {
       const resName = await fetch('/api/next-name?type=note');
-      const d = await resName.json();
+      const d = (typeof readJSON === 'function') ? await readJSON(resName) : await resName.json();
       title = d.name;
       slug = d.name.replace(/[^\w一-鿿]/g, '-').replace(/-+/g, '-');
       // Detect type from content
@@ -833,7 +833,7 @@ document.getElementById('editor-form').addEventListener('submit', async e => {
         imgSizes: imageSizes
       })
     });
-    const data = await res.json();
+    const data = (typeof readJSON === 'function') ? await readJSON(res) : await res.json();
     if (data.ok) {
       r.className = 'result success';
       r.innerHTML = '已保存！<a href="/note/' + encodeURIComponent(data.slug) + '">查看</a>';
