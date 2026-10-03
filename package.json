@@ -2,6 +2,7 @@
   "name": "note-site",
   "version": "1.0.0",
   "description": "MyNote Desktop - 笔记管理桌面应用",
+  "author": "lwj189",
   "main": "electron/main.js",
   "scripts": {
     "start": "electron .",
