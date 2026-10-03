@@ -13,10 +13,26 @@ const SITE_TITLE = process.env.SITE_TITLE || 'MyNote';
 const GIT_TOKEN = process.env.GIT_TOKEN || '';
 const GIT_REPO = process.env.GIT_REPO || 'github.com/lwj189/note-site.git';
 const GIT_USER = process.env.GIT_USER || 'lwj189';
-const DATA_DIR = path.join(__dirname, 'data');
+// 数据目录解析：
+// 1) 环境变量 MYNOTE_DATA_DIR 优先
+// 2) 源码运行（node server.js / npm start）→ 用项目里的 data/
+// 3) 打包后的安装版（代码在 app.asar 内，不可写）→ 优先沿用 D:\note-site\data（保持与网页版同一份数据），
+//    若该目录不存在，则退回 %APPDATA%\MyNote\data，避免往安装目录写数据
+const IS_PACKAGED = __dirname.includes('app.asar');
+function resolveDataDir() {
+  if (process.env.MYNOTE_DATA_DIR) return process.env.MYNOTE_DATA_DIR;
+  if (!IS_PACKAGED) return path.join(__dirname, 'data');
+  const sharedDir = 'D:\\note-site\\data';
+  try { if (fs.existsSync(sharedDir)) return sharedDir; } catch (e) { /* ignore */ }
+  const base = process.env.APPDATA || process.env.USERPROFILE || __dirname;
+  return path.join(base, 'MyNote', 'data');
+}
+const DATA_DIR = resolveDataDir();
 const NOTES_FILE = path.join(DATA_DIR, 'notes.json');
 const NOTEBOOKS_FILE = path.join(DATA_DIR, 'notebooks.json');
 const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
+
+console.log('[data] 数据目录: ' + DATA_DIR + (IS_PACKAGED ? '（安装版）' : '（源码模式）'));
 
 [DATA_DIR, UPLOADS_DIR].forEach(dir => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });

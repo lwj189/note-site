@@ -1,0 +1,42 @@
+appId: com.lwj189.mynote
+productName: MyNote
+copyright: Copyright © 2026 lwj189
+
+directories:
+  output: dist
+  buildResources: build-resources
+
+# 打包进应用的文件：程序代码 + 前端资源 + Electron 主进程脚本
+# 明确排除用户数据（data/）、git 仓库、打包产物与临时目录
+files:
+  - "**/*"
+  - "!data/**"
+  - "!.git/**"
+  - "!dist/**"
+  - "!node_modules/electron/**"
+  - "!electron/make-icon.js"
+  - "!*.zip"
+  - "!*.md"
+  - "!.tmp*/**"
+
+asar: true
+
+# 直接复用已安装的 Electron 运行时，避免打包时重复下载 100+MB
+electronDist: node_modules/electron/dist
+
+win:
+  icon: electron/icon.ico
+  target:
+    - target: nsis
+      arch:
+        - x64
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: MyNote
+  artifactName: MyNote-Setup-${version}.exe
+  deleteAppDataOnUninstall: false
