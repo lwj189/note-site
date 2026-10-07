@@ -9,5 +9,8 @@ electron/make-icon.js
 dist/
 D:\note-site-data-backup-*
 
+# 笔记撰写过程中的临时工作区（草稿章节、组装脚本）
+.tmp-notes/
+
 # 笔记正文只保存在本地，不推送到 GitHub（保留 notebooks.json 以维持目录结构）
 data/notes.json
