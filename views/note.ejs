@@ -149,6 +149,7 @@
     a.addEventListener('click', function(e) {
       e.preventDefault();
       it.el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      closeToc(); // 跳转后自动收起目录
     });
     list.appendChild(a);
   });
@@ -167,14 +168,36 @@
   markCurrent();
 })();
 
+function closeToc() {
+  var panel = document.getElementById('note-toc-panel');
+  var btn = document.getElementById('note-toc-btn');
+  if (panel) panel.style.display = 'none';
+  if (btn) btn.classList.remove('active');
+}
+
 function toggleToc() {
   var panel = document.getElementById('note-toc-panel');
   var btn = document.getElementById('note-toc-btn');
   if (!panel) return;
-  var show = panel.style.display !== 'block';
-  panel.style.display = show ? 'block' : 'none';
-  if (btn) btn.classList.toggle('active', show);
+  if (panel.style.display === 'block') { closeToc(); return; }
+  panel.style.display = 'block';
+  if (btn) btn.classList.add('active');
 }
+
+// 点击目录面板和按钮之外的任何地方 → 收起目录（捕获阶段，避免被内部 stopPropagation 拦掉）
+document.addEventListener('click', function(e) {
+  var panel = document.getElementById('note-toc-panel');
+  if (!panel || panel.style.display !== 'block') return;
+  if (panel.contains(e.target)) return;
+  var btn = document.getElementById('note-toc-btn');
+  if (btn && btn.contains(e.target)) return;
+  closeToc();
+}, true);
+
+// Esc 也收起目录
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' || e.keyCode === 27) closeToc();
+});
 </script>
 
 <script>
