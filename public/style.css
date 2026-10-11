@@ -2093,3 +2093,19 @@ html.dark .hd-fold { color: #a5b4fc; background: rgba(129,140,248,.14); }
   .hist-list { width: auto; max-height: 32vh; border-right: none; border-bottom: 1px solid var(--border); }
   .export-menu { min-width: 210px; }
 }
+
+/* ---- 编辑器拖拽上传高亮 ---- */
+.editor-area.dragover {
+  outline: 2px dashed var(--accent);
+  outline-offset: -6px;
+  background: rgba(67,97,238,.06);
+}
+html.dark .editor-area.dragover { background: rgba(129,140,248,.12); }
+.editor-area.dragover::after {
+  content: '松手即上传并插入';
+  position: absolute; right: 14px; top: 10px;
+  font-size: .78rem; color: var(--accent);
+  background: var(--card-bg, #fff); border: 1px solid var(--accent);
+  border-radius: 999px; padding: 3px 10px; pointer-events: none;
+}
+.editor-area { position: relative; }
