@@ -1,5 +1,6 @@
-const { app, BrowserWindow, Tray, Menu, nativeImage, dialog } = require('electron');
+const { app, BrowserWindow, Tray, Menu, nativeImage, dialog, ipcMain } = require('electron');
 const path = require('path');
+const fs = require('fs');
 
 // 标记 Electron 模式，让 server.js 不自动启动且跳过 Pinggy
 process.env.ELECTRON_RUN = 'true';
@@ -98,6 +99,51 @@ function createWindow() {
 
   mainWindow.on('closed', () => { mainWindow = null; });
 }
+
+// ---- 导出 PDF：隐藏窗口加载打印视图 → printToPDF → 另存为 ----
+ipcMain.handle('export-pdf', async (event, payload) => {
+  const slug = payload && payload.slug;
+  const title = (payload && payload.title) || slug || 'note';
+  if (!slug) return { ok: false, error: '缺少笔记标识' };
+  const win = new BrowserWindow({
+    show: false,
+    webPreferences: { nodeIntegration: false, contextIsolation: true }
+  });
+  try {
+    await win.loadURL('http://localhost:' + getPort() + '/print/' + encodeURIComponent(slug));
+    // 等图片解码完成，否则 PDF 里可能是空白图
+    await win.webContents.executeJavaScript(
+      'Promise.all(Array.from(document.images).map(function (img) { return img.complete ? 1 : new Promise(function (r) { img.onload = img.onerror = r; }); })).then(function () { return document.images.length; })'
+    ).catch(() => {});
+    const data = await win.webContents.printToPDF({
+      printBackground: true,
+      pageSize: 'A4',
+      margins: { top: 0.5, bottom: 0.5, left: 0.5, right: 0.5 }
+    });
+    const safe = String(title).replace(/[\\/:*?"<>|]/g, '_');
+    let filePath;
+    // 设了 MYNOTE_PDF_DIR 就免弹窗直接写文件（便于脚本化 / 自动化测试）
+    const forcedDir = process.env.MYNOTE_PDF_DIR;
+    if (forcedDir) {
+      if (!fs.existsSync(forcedDir)) fs.mkdirSync(forcedDir, { recursive: true });
+      filePath = path.join(forcedDir, safe + '.pdf');
+    } else {
+      const picked = await dialog.showSaveDialog(mainWindow, {
+        title: '导出 PDF',
+        defaultPath: path.join(app.getPath('downloads'), safe + '.pdf'),
+        filters: [{ name: 'PDF 文件', extensions: ['pdf'] }]
+      });
+      if (picked.canceled || !picked.filePath) return { ok: false, canceled: true };
+      filePath = picked.filePath;
+    }
+    fs.writeFileSync(filePath, data);
+    return { ok: true, path: filePath, size: data.length };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  } finally {
+    if (!win.isDestroyed()) win.destroy();
+  }
+});
 
 // ---- App lifecycle ----
 app.whenReady().then(async () => {

@@ -25,6 +25,9 @@
     <label class="toolbar-btn" title="插入文件">📄
       <input type="file" id="tb-file-input" accept=".txt,.cpp,.md,.h,.hpp,.c,.py,.js,.ts,.java,.cs,.go,.rs,.rb,.php,.html,.css,.json,.xml,.yaml,.yml,.sql,.sh,.bat,.ps1,.docx" hidden>
     </label>
+    <% if (typeof note !== 'undefined') { %>
+    <button type="button" class="toolbar-btn" id="tb-history-btn" onclick="openEditorHistory()" title="版本历史：每次覆盖保存前自动留一份旧稿，可对比可回滚">🕘 历史</button>
+    <% } %>
     <span class="toolbar-sep"></span>
     <button type="button" class="toolbar-btn" id="tb-preview-btn" onclick="togglePreview()">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -856,9 +859,27 @@ document.addEventListener('keydown', function(e) {
     document.getElementById('editor-form').dispatchEvent(new Event('submit'));
   }
 });
+
+// ---- 版本历史：查看旧稿 / 对比 / 回滚到编辑框 ----
+function openEditorHistory() {
+  var slug = (document.getElementById('e-slug').value || '').trim();
+  if (!isEdit || !slug) { showMsg('先保存一次，之后每次覆盖保存都会自动留历史版本', true); return; }
+  openHistory(slug, {
+    mode: 'editor',
+    currentContent: textarea.value,
+    onRestore: function (content) {
+      textarea.value = content;
+      textarea.dispatchEvent(new Event('input'));
+      var pv = document.getElementById('e-preview');
+      if (pv && pv.style.display !== 'none') renderPreview();
+      showMsg('已把该版本内容放回编辑框，按 Ctrl+S 保存');
+    }
+  });
+}
 </script>
 
 <script src="/notebook-picker.js"></script>
+<script src="/history.js"></script>
 <script>
 // 笔记本选择器：可多选芯片 + 现场新建笔记本 / 自定义标签
 (function () {

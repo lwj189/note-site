@@ -10,6 +10,7 @@
     "dev": "node --watch server.js"
   },
   "dependencies": {
+    "docx": "^9.10.0",
     "ejs": "^3.1.10",
     "express": "^4.21.0",
     "highlight.js": "^11.10.0",

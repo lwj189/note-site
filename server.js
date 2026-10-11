@@ -3,6 +3,7 @@ const multer = require('multer');
 const { marked } = require('marked');
 const hljs = require('highlight.js');
 const mammoth = require('mammoth');
+const { markdownToDocx } = require('./lib/docx-export');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -130,6 +131,62 @@ function scheduleFlush() {
       console.error('[cache] write error:', err.message);
     }
   }, 500);
+}
+
+// ---- 版本历史（编辑安全网）：每次覆盖保存前，先给旧内容存一份快照 ----
+const HISTORY_DIR = path.join(DATA_DIR, 'history');
+const MAX_VERSIONS = 30;
+try { if (!fs.existsSync(HISTORY_DIR)) fs.mkdirSync(HISTORY_DIR, { recursive: true }); } catch (e) { /* ignore */ }
+
+function historyDir(slug) {
+  const key = crypto.createHash('sha1').update(String(slug)).digest('hex').slice(0, 16);
+  return path.join(HISTORY_DIR, key);
+}
+function readHistoryIndex(slug) {
+  try {
+    const arr = JSON.parse(fs.readFileSync(path.join(historyDir(slug), 'index.json'), 'utf-8'));
+    return Array.isArray(arr) ? arr : [];
+  } catch (e) { return []; }
+}
+function writeHistoryIndex(slug, idx) {
+  const dir = historyDir(slug);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'index.json'), JSON.stringify(idx, null, 2));
+}
+function readSnapshot(slug, id) {
+  if (!/^[0-9a-zA-Z-]+$/.test(String(id))) return null;
+  try { return fs.readFileSync(path.join(historyDir(slug), id + '.snap'), 'utf-8'); } catch (e) { return null; }
+}
+// 保存"覆盖前"的旧内容；与上一版重复则跳过（避免 30 秒自动保存刷出一堆无差别版本）
+function snapshotVersion(note, reason) {
+  if (!note || !note.slug || !note.content) return null;
+  try {
+    const dir = historyDir(note.slug);
+    const idx = readHistoryIndex(note.slug);
+    if (idx.length) {
+      const last = readSnapshot(note.slug, idx[0].id);
+      if (last !== null && last === note.content) return null;
+    }
+    const ts = new Date().toISOString();
+    const id = ts.replace(/[-:.TZ]/g, '').slice(0, 17) + '-' + crypto.randomBytes(2).toString('hex');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, id + '.snap'), note.content);
+    idx.unshift({
+      id, ts, size: note.content.length,
+      lines: note.content.split('\n').length,
+      title: note.title || '', reason: reason || 'save',
+      preview: note.content.replace(/\s+/g, ' ').slice(0, 140)
+    });
+    while (idx.length > MAX_VERSIONS) {
+      const drop = idx.pop();
+      try { fs.unlinkSync(path.join(dir, drop.id + '.snap')); } catch (e) { /* ignore */ }
+    }
+    writeHistoryIndex(note.slug, idx);
+    return id;
+  } catch (e) {
+    console.error('[history] snapshot error:', e.message);
+    return null;
+  }
 }
 
 function highlightKeyword(text, keyword) {
@@ -478,16 +535,18 @@ app.post('/api/notes', (req, res) => {
 
   const parsedTags = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [];
 
-  const notes = loadActiveNotes();
+  const notes = loadNotes(); // 全量（含回收站）——避免把软删除的笔记从数据里抹掉
   const existing = notes.find(n => n.slug === slug);
   const now = new Date().toISOString();
   if (existing) {
+    if (existing.content && existing.content !== content) snapshotVersion(existing, 'save'); // 覆盖前先存旧版
     existing.title = title;
     existing.content = content;
     existing.type = type || 'md';
     existing.tags = parsedTags;
     if (req.body.imgSizes) existing.imgSizes = req.body.imgSizes;
     existing.updatedAt = now;
+    if (existing.deletedAt) delete existing.deletedAt; // 覆盖保存 = 重新激活
   } else {
     notes.push({ id: crypto.randomBytes(8).toString('hex'), slug, title, content, type: type || 'md', tags: parsedTags, imgSizes: req.body.imgSizes || {}, createdAt: now, updatedAt: now });
   }
@@ -507,11 +566,13 @@ app.post('/api/upload-file', fileUpload.single('file'), (req, res) => {
   const type = LANG_MAP[ext] || 'txt';
 
   const done = (content) => {
-    const notes = loadActiveNotes();
+    const notes = loadNotes(); // 全量（含回收站）
     const existing = notes.find(n => n.slug === slug);
     const now = new Date().toISOString();
     if (existing) {
+      if (existing.content && existing.content !== content) snapshotVersion(existing, 'upload');
       existing.title = title; existing.content = content; existing.type = type; existing.updatedAt = now;
+      if (existing.deletedAt) delete existing.deletedAt;
     } else {
       notes.push({ id: crypto.randomBytes(8).toString('hex'), slug, title, content, type, createdAt: now, updatedAt: now });
     }
@@ -643,6 +704,140 @@ app.delete('/api/trash', (req, res) => {
   saveNotes(notes);
   debouncedGitSync();
   res.json({ ok: true });
+});
+
+// ---- 版本历史 API ----
+
+// 历史版本列表（不含正文）
+app.get('/api/notes/:slug/history', (req, res) => {
+  const slug = req.params.slug;
+  const note = loadNotes().find(n => n.slug === slug);
+  const index = readHistoryIndex(slug);
+  res.json({
+    ok: true, slug,
+    current: note ? { size: (note.content || '').length, updatedAt: note.updatedAt, title: note.title } : null,
+    versions: index.map(v => ({ id: v.id, ts: v.ts, size: v.size, lines: v.lines, title: v.title, reason: v.reason, preview: v.preview }))
+  });
+});
+
+// 单个历史版本正文
+app.get('/api/notes/:slug/history/:id', (req, res) => {
+  const content = readSnapshot(req.params.slug, req.params.id);
+  if (content === null) return res.status(404).json({ error: '找不到该历史版本' });
+  res.json({ ok: true, id: req.params.id, content });
+});
+
+// 恢复到某个历史版本（恢复前先把当前内容存一份，保证可以再回滚）
+app.post('/api/notes/:slug/history/:id/restore', (req, res) => {
+  const slug = req.params.slug;
+  const content = readSnapshot(slug, req.params.id);
+  if (content === null) return res.status(404).json({ error: '找不到该历史版本' });
+  const notes = loadNotes();
+  const note = notes.find(n => n.slug === slug);
+  if (!note) return res.status(404).json({ error: '笔记不存在' });
+  if (note.content !== content) snapshotVersion(note, 'restore');
+  note.content = content;
+  note.updatedAt = new Date().toISOString();
+  saveNotes(notes);
+  debouncedGitSync();
+  res.json({ ok: true, slug, restoredFrom: req.params.id });
+});
+
+// ---- 导出：HTML / Word(.docx) ----
+
+function fileToDataUri(file) {
+  const ext = path.extname(file).toLowerCase();
+  const mime = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml' }[ext] || 'application/octet-stream';
+  return 'data:' + mime + ';base64,' + fs.readFileSync(file).toString('base64');
+}
+
+// 导出为自包含 HTML（图片内嵌为 data URI，可直接发到手机上看）
+function buildExportHtml(note) {
+  let body = renderContent(note);
+  body = body.replace(/src="\/img\/([^"]+)"/g, (m, name) => {
+    try {
+      const file = path.join(UPLOADS_DIR, path.basename(decodeURIComponent(name)));
+      if (!fs.existsSync(file)) return m;
+      return 'src="' + fileToDataUri(file) + '"';
+    } catch (e) { return m; }
+  });
+  const meta = '导出时间：' + new Date().toLocaleString('zh-CN') + ' · 字数：' + (note.content || '').length;
+  return `<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(note.title)}</title>
+<style>
+:root{color-scheme:light}
+body{max-width:820px;margin:0 auto;padding:32px 20px 64px;font:16px/1.75 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;color:#1f2328;background:#fff}
+h1,h2,h3,h4,h5,h6{line-height:1.3;margin:1.6em 0 .6em;font-weight:600}
+h1{font-size:1.9em;border-bottom:1px solid #e5e7eb;padding-bottom:.3em}
+h2{font-size:1.5em;border-bottom:1px solid #eef0f3;padding-bottom:.25em}
+h3{font-size:1.22em}
+a{color:#2563eb;text-decoration:none;border-bottom:1px solid #bfdbfe}
+code{font-family:Consolas,"Courier New",monospace;font-size:.92em;background:#f3f4f6;padding:.12em .35em;border-radius:4px}
+pre{background:#f6f8fa;border:1px solid #e5e7eb;border-radius:8px;padding:14px 16px;overflow-x:auto;line-height:1.5}
+pre code{background:none;padding:0;font-size:.9em}
+table{border-collapse:collapse;width:100%;margin:1em 0;font-size:.95em}
+th,td{border:1px solid #d7dbe0;padding:7px 10px;text-align:left;vertical-align:top}
+th{background:#eef2ff;font-weight:600}
+blockquote{margin:1em 0;padding:.4em 1em;border-left:4px solid #c7d2fe;background:#f8fafc;color:#374151}
+img{max-width:100%;height:auto;border-radius:6px}
+hr{border:none;border-top:1px solid #e5e7eb;margin:2em 0}
+.doc-meta{color:#6b7280;font-size:.86em;margin:0 0 1.6em}
+.task-list-item{list-style:none}
+.wikilink-unresolved{color:#9ca3af;border-bottom:1px dashed #d1d5db}
+.hljs{background:#f6f8fa;color:#24292e}
+.hljs-comment,.hljs-meta{color:#6a737d}
+.hljs-keyword,.hljs-name,.hljs-operator,.hljs-tag{color:#d73a49}
+.hljs-string,.hljs-addition,.hljs-bullet,.hljs-symbol,.hljs-regexp{color:#032f62}
+.hljs-number,.hljs-literal,.hljs-type,.hljs-params,.hljs-variable,.hljs-attr{color:#005cc5}
+.hljs-title,.hljs-built_in,.hljs-section,.hljs-selector-tag{color:#6f42c1}
+@media print{body{padding:0;max-width:none}a{color:#1f2328;border:none}pre,table,blockquote{break-inside:avoid}}
+</style></head>
+<body>
+<h1>${esc(note.title)}</h1>
+<p class="doc-meta">${meta}</p>
+${body}
+</body></html>`;
+}
+
+app.get('/api/notes/:slug/export', (req, res) => {
+  const note = loadNotes().find(n => n.slug === req.params.slug);
+  if (!note) return res.status(404).json({ error: '笔记不存在' });
+  const format = String(req.query.format || 'html').toLowerCase();
+  const safeName = (note.title || note.slug).replace(/[\\/:*?"<>|]/g, '_');
+  if (format === 'html') {
+    const html = buildExportHtml(note);
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Content-Disposition', "attachment; filename*=UTF-8''" + encodeURIComponent(safeName + '.html'));
+    return res.send(html);
+  }
+  if (format === 'docx' || format === 'word') {
+    const meta = '导出时间：' + new Date().toLocaleString('zh-CN') + ' · 字数：' + (note.content || '').length + ' · 来源：MyNote';
+    return markdownToDocx({ title: note.title, content: note.content, uploadsDir: UPLOADS_DIR, meta })
+      .then(buf => {
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+        res.setHeader('Content-Disposition', "attachment; filename*=UTF-8''" + encodeURIComponent(safeName + '.docx'));
+        res.send(buf);
+      })
+      .catch(err => {
+        console.error('[export] docx error:', err.message);
+        res.status(500).json({ error: '生成 Word 失败：' + err.message });
+      });
+  }
+  res.status(400).json({ error: '不支持的导出格式：' + format });
+});
+
+// 打印视图（Electron 里用它生成 PDF；浏览器里加 ?print=1 自动唤起打印对话框）
+app.get('/print/:slug', (req, res) => {
+  const note = loadNotes().find(n => n.slug === req.params.slug);
+  if (!note) return res.status(404).send('笔记不存在');
+  let html = buildExportHtml(note);
+  if (req.query.print) {
+    html = html.replace('</body>', '<script>window.addEventListener("load",function(){setTimeout(function(){window.print()},400)});</script>\n</body>');
+  }
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
 });
 
 // JSON API

@@ -30,10 +30,23 @@
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         <span>编辑</span>
       </a>
-      <button class="card-action-btn" title="导出" onclick="exportNote()" style="opacity:1;width:auto;padding:7px 12px;gap:6px;font-size:.85rem;font-family:inherit;font-weight:500">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        <span>导出</span>
+      <button class="card-action-btn" id="note-history-btn" title="版本历史（每次覆盖保存前自动留一份旧稿，可回滚）" onclick="openNoteHistory()" style="opacity:1;width:auto;padding:7px 12px;gap:6px;font-size:.85rem;font-family:inherit;font-weight:500">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
+        <span>历史</span>
       </button>
+      <div class="export-wrap">
+        <button class="card-action-btn" id="note-export-btn" title="导出 / 打印" onclick="toggleExportMenu(event)" style="opacity:1;width:auto;padding:7px 12px;gap:6px;font-size:.85rem;font-family:inherit;font-weight:500">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>导出</span>
+          <svg class="export-caret" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="export-menu" id="export-menu" style="display:none">
+          <button type="button" onclick="exportAs('md')"><b>Markdown</b><span>.md 纯文本，可以再导回 MyNote</span></button>
+          <button type="button" onclick="exportAs('html')"><b>网页 HTML</b><span>单个文件，图片已内嵌</span></button>
+          <button type="button" onclick="exportAs('docx')"><b>Word 文档</b><span>.docx，可用 Word / WPS 打开</span></button>
+          <button type="button" onclick="exportAs('pdf')"><b>PDF</b><span>桌面版直接生成，网页版走打印</span></button>
+        </div>
+      </div>
       <button class="card-action-btn" title="设置" onclick="editNoteMeta('<%= note.slug %>', '<%= note.title.replace(/'/g, "\\'") %>', '<%= note.type %>', '<%= note.tags ? note.tags.join(', ') : '' %>')" style="opacity:1;width:auto;padding:7px 12px;gap:6px;font-size:.85rem;font-family:inherit;font-weight:500">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
         <span>设置</span>
@@ -541,6 +554,9 @@ function resetZoom() {
 </script>
 
 <script>
+var NOTE_SLUG = <%- JSON.stringify(note.slug) %>;
+var NOTE_TITLE = <%- JSON.stringify(note.title) %>;
+
 function exportNote() {
   var title = document.querySelector('.note-header h1').textContent.trim();
   var content = document.getElementById('note-original-content').value;
@@ -554,6 +570,53 @@ function exportNote() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+function toggleExportMenu(e) {
+  if (e) e.stopPropagation();
+  var m = document.getElementById('export-menu');
+  if (m) m.style.display = (m.style.display === 'none' || !m.style.display) ? 'block' : 'none';
+}
+document.addEventListener('click', function (e) {
+  var m = document.getElementById('export-menu');
+  if (m && m.style.display === 'block' && !(e.target.closest && e.target.closest('.export-wrap'))) m.style.display = 'none';
+});
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') { var m = document.getElementById('export-menu'); if (m) m.style.display = 'none'; }
+});
+
+async function exportAs(fmt) {
+  var m = document.getElementById('export-menu');
+  if (m) m.style.display = 'none';
+  if (fmt === 'md') return exportNote();
+  if (fmt === 'html' || fmt === 'docx') {
+    window.location.href = '/api/notes/' + encodeURIComponent(NOTE_SLUG) + '/export?format=' + fmt;
+    return;
+  }
+  if (fmt === 'pdf') {
+    if (window.electronAPI && window.electronAPI.exportPdf) {
+      var btn = document.getElementById('note-export-btn');
+      var label = btn ? btn.querySelector('span') : null;
+      var old = label ? label.textContent : '';
+      if (label) label.textContent = '生成中…';
+      try {
+        var r = await window.electronAPI.exportPdf({ slug: NOTE_SLUG, title: NOTE_TITLE });
+        if (r && r.ok) alert('PDF 已保存到：\n' + r.path);
+        else if (r && r.canceled) { /* 用户取消 */ }
+        else alert('导出 PDF 失败：' + ((r && r.error) || '未知错误'));
+      } catch (err) {
+        alert('导出 PDF 失败：' + err.message);
+      } finally {
+        if (label) label.textContent = old;
+      }
+    } else {
+      window.open('/print/' + encodeURIComponent(NOTE_SLUG) + '?print=1', '_blank');
+    }
+  }
+}
+
+function openNoteHistory() {
+  openHistory(NOTE_SLUG, { mode: 'view', currentContent: document.getElementById('note-original-content').value });
 }
 
 async function togglePin(slug) {
@@ -629,6 +692,7 @@ async function saveNoteMeta(slug) {
 </script>
 
 <script src="/notebook-picker.js"></script>
+<script src="/history.js"></script>
 <script>
 // 笔记本清单（供"设置"弹窗里的选择器使用）
 var NOTEBOOKS_ALL = <%- JSON.stringify(typeof notebooks !== 'undefined' ? notebooks : []) %>;
