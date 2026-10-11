@@ -1959,3 +1959,60 @@ html.dark .nb-chip.active { color: var(--fg); }
 .nb-tool-btn-ghost { background: transparent; color: var(--accent); }
 .nb-tool-btn-ghost:hover { background: rgba(67,97,238,.1); color: var(--accent); }
 .nb-tool-msg { font-size: .78rem; color: var(--muted); }
+
+/* ---- 笔记内查找条 ---- */
+.note-find-bar {
+  position: fixed; top: 16px; right: 24px; z-index: 120;
+  display: none; align-items: center; gap: 6px;
+  padding: 6px 8px; max-width: min(520px, calc(100vw - 32px));
+  background: #fff; border: 1px solid var(--border); border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(15,23,42,.12);
+}
+.note-find-bar svg { color: var(--muted); flex: none; }
+.note-find-bar input {
+  flex: 1; min-width: 120px; border: none; outline: none;
+  background: transparent; color: var(--fg); font: inherit; font-size: .9rem;
+}
+.note-find-count {
+  font-size: .78rem; color: var(--muted); white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.note-find-nav {
+  flex: none; width: 26px; height: 26px; border: none; border-radius: 6px;
+  background: #f1f5f9; color: var(--fg); cursor: pointer; font-size: .85rem;
+  display: flex; align-items: center; justify-content: center;
+}
+.note-find-nav:hover { background: #e2e8f0; }
+.note-find-close:hover { background: #fee2e2; color: #b91c1c; }
+mark.note-find-hit { background: #fde68a; color: inherit; border-radius: 2px; }
+mark.note-find-current { background: #f59e0b; color: #fff; }
+html.dark .note-find-bar { background: #1e293b; border-color: #334155; box-shadow: 0 6px 24px rgba(0,0,0,.45); }
+html.dark .note-find-nav { background: #334155; color: #e2e8f0; }
+html.dark .note-find-nav:hover { background: #475569; }
+html.dark mark.note-find-hit { background: #a16207; color: #fff; }
+html.dark mark.note-find-current { background: #f59e0b; color: #1f2937; }
+
+/* ---- 阅读位置提示（回到上次读到的地方）---- */
+.note-resume-toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 130;
+  display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+  max-width: calc(100vw - 32px);
+  background: rgba(15,23,42,.92); color: #f8fafc; font-size: .85rem;
+  border-radius: 999px; box-shadow: 0 8px 28px rgba(15,23,42,.3);
+}
+.note-resume-toast span {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 52vw;
+}
+.note-resume-toast button {
+  flex: none; padding: 4px 10px; border: none; border-radius: 999px;
+  background: rgba(255,255,255,.16); color: #fff; font-size: .8rem;
+  font-family: inherit; cursor: pointer;
+}
+.note-resume-toast button:hover { background: rgba(255,255,255,.3); }
+.note-resume-toast .note-resume-close { padding: 2px 8px; font-size: .95rem; }
+
+@media (max-width: 900px) {
+  .note-find-bar { left: 8px; right: 8px; top: 56px; max-width: none; }
+  .note-resume-toast { left: 8px; right: 8px; transform: none; max-width: none; }
+  .note-resume-toast span { max-width: none; flex: 1; }
+}

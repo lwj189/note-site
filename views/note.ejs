@@ -22,6 +22,10 @@
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
         <span>目录</span>
       </button>
+      <button class="card-action-btn" id="note-find-btn" title="在本文中查找（Ctrl+F）">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
+        <span>查找</span>
+      </button>
       <a href="/edit/<%= encodeURIComponent(note.slug) %>" class="card-action-btn card-edit" title="编辑内容">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         <span>编辑</span>
@@ -64,6 +68,16 @@
   <div class="note-toc-title">目录大纲</div>
   <input id="note-toc-filter" class="note-toc-filter" type="search" placeholder="过滤标题…" style="display:none">
   <nav id="note-toc-list" class="note-toc-list"></nav>
+</div>
+
+<!-- 笔记内查找条：桌面版是 Electron，没有浏览器自带查找 -->
+<div id="note-find-bar" class="note-find-bar" style="display:none">
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
+  <input id="note-find-input" type="search" placeholder="在本文中查找…" autocomplete="off">
+  <span id="note-find-count" class="note-find-count"></span>
+  <button id="note-find-prev" class="note-find-nav" title="上一处（Shift+Enter）">↑</button>
+  <button id="note-find-next" class="note-find-nav" title="下一处（Enter）">↓</button>
+  <button id="note-find-close" class="note-find-nav note-find-close" title="关闭（Esc）">×</button>
 </div>
 
 <!-- 悬浮目录按钮：滚动一段后常驻右下角，长笔记里不用再回顶部 -->
@@ -161,22 +175,95 @@
     it.a = a;
     list.appendChild(a);
   });
+  // ---- 滚动高亮：缓存标题位置 + 二分查找（不再每个滚动事件都重排 168 次）----
+  var offsets = [];
+  var offsetsDirty = true;
+  function measure() {
+    offsets = items.map(function(it) { return it.el.getBoundingClientRect().top + window.scrollY; });
+    offsetsDirty = false;
+  }
+  function indexAt(y) {
+    if (offsetsDirty) measure();
+    var anchor = y + 80, lo = 0, hi = offsets.length - 1, res = 0;
+    while (lo <= hi) {
+      var mid = (lo + hi) >> 1;
+      if (offsets[mid] <= anchor) { res = mid; lo = mid + 1; } else { hi = mid - 1; }
+    }
+    return res;
+  }
   var current = items[0];
+  var lastMarked = null;
   function markCurrent() {
-    var anchor = window.scrollY + 80;
-    var cur = items[0];
-    items.forEach(function(it) {
-      var top = it.el.getBoundingClientRect().top + window.scrollY;
-      if (top <= anchor) cur = it;
-    });
+    var cur = items[indexAt(window.scrollY)];
+    if (cur === lastMarked) return;
+    lastMarked = cur;
     current = cur;
     items.forEach(function(it) {
       it.el.classList.toggle('toc-active', it === cur);
       if (it.a) it.a.classList.toggle('toc-item-active', it === cur);
     });
   }
-  window.addEventListener('scroll', markCurrent, { passive: true });
-  markCurrent();
+  function invalidate() { offsetsDirty = true; markCurrent(); }
+  window.__noteTocInvalidate = invalidate;
+  window.addEventListener('resize', invalidate, { passive: true });
+  window.addEventListener('load', invalidate);
+  body.querySelectorAll('img').forEach(function(im) {
+    if (!im.complete) im.addEventListener('load', invalidate);
+  });
+
+  // ---- 阅读位置记忆：下次打开自动回到上次读到的章节 ----
+  var SLUG = <%- JSON.stringify(note.slug) %>;
+  var POS_KEY = 'mynote:pos:' + SLUG;
+  var saveTimer = null;
+  function savePos() {
+    if (saveTimer) return;
+    saveTimer = setTimeout(function() {
+      saveTimer = null;
+      try {
+        if (window.scrollY < 200) { localStorage.removeItem(POS_KEY); return; }
+        var i = indexAt(window.scrollY);
+        localStorage.setItem(POS_KEY, JSON.stringify({
+          y: Math.round(window.scrollY), idx: i, text: items[i] ? items[i].text : '', ts: Date.now()
+        }));
+      } catch (e) {}
+    }, 800);
+  }
+  function showResumeToast(text) {
+    var t = document.createElement('div');
+    t.className = 'note-resume-toast';
+    var s = document.createElement('span');
+    s.textContent = '已回到上次阅读位置' + (text ? '：' + text : '');
+    var top = document.createElement('button');
+    top.textContent = '回到顶部';
+    top.onclick = function() { window.scrollTo({ top: 0, behavior: 'smooth' }); t.remove(); };
+    var x = document.createElement('button');
+    x.className = 'note-resume-close';
+    x.textContent = '×';
+    x.onclick = function() { t.remove(); };
+    t.appendChild(s); t.appendChild(top); t.appendChild(x);
+    document.body.appendChild(t);
+    setTimeout(function() { if (t.parentNode) t.remove(); }, 9000);
+  }
+  var restored = false;
+  function restorePos() {
+    if (restored || location.hash) return;
+    var raw = null;
+    try { raw = localStorage.getItem(POS_KEY); } catch (e) { return; }
+    if (!raw) return;
+    var p = null;
+    try { p = JSON.parse(raw); } catch (e) { return; }
+    if (!p || !p.y || p.y < 300) return;
+    if (p.ts && Date.now() - p.ts > 90 * 24 * 3600 * 1000) return;
+    var idx = -1;
+    if (typeof p.idx === 'number' && items[p.idx] && p.text && items[p.idx].text === p.text) idx = p.idx;
+    else items.forEach(function(it, i) { if (idx < 0 && p.text && it.text === p.text) idx = i; });
+    if (offsetsDirty) measure();
+    var target = idx >= 0 ? Math.max(0, offsets[idx] - 72) : p.y;
+    restored = true;
+    window.scrollTo(0, target);
+    markCurrent();
+    showResumeToast(items[idx] ? items[idx].text : '');
+  }
 
   // 打开面板时，把"当前章节"滚到面板中间：长目录里一眼看到自己在哪
   window.__noteTocScrollActive = function() {
@@ -200,12 +287,22 @@
     });
   }
 
-  // 悬浮目录按钮：滚过一屏就出现，长笔记里不用再回顶部
-  if (fab) {
-    var syncFab = function() { fab.style.display = window.scrollY > 300 ? 'flex' : 'none'; };
-    window.addEventListener('scroll', syncFab, { passive: true });
+  // ---- 悬浮目录按钮 + 统一滚动处理：一个 rAF 里做完「高亮 / 按钮 / 位置记录」----
+  var syncFab = function() { if (fab) fab.style.display = window.scrollY > 300 ? 'flex' : 'none'; };
+  var ticking = false;
+  function onScrollFrame() {
+    ticking = false;
+    markCurrent();
     syncFab();
+    savePos();
   }
+  window.addEventListener('scroll', function() {
+    if (!ticking) { ticking = true; requestAnimationFrame(onScrollFrame); }
+  }, { passive: true });
+  markCurrent();
+  syncFab();
+  restorePos();
+  window.addEventListener('load', restorePos);
 })();
 
 function closeToc() {
@@ -246,6 +343,116 @@ document.addEventListener('click', function(e) {
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape' || e.keyCode === 27) closeToc();
 });
+</script>
+
+<script>
+// 笔记内查找：桌面版是 Electron（没有浏览器自带查找条），这里自己做一个
+(function() {
+  var body = document.querySelector('.note-body');
+  var bar = document.getElementById('note-find-bar');
+  var input = document.getElementById('note-find-input');
+  var countEl = document.getElementById('note-find-count');
+  var prevBtn = document.getElementById('note-find-prev');
+  var nextBtn = document.getElementById('note-find-next');
+  var closeBtn = document.getElementById('note-find-close');
+  var openBtn = document.getElementById('note-find-btn');
+  if (!body || !bar || !input || !countEl) return;
+  var hits = [], cur = -1, timer = null, query = '', MAX = 3000;
+
+  function unwrap() {
+    var marks = body.querySelectorAll('mark.note-find-hit');
+    for (var i = 0; i < marks.length; i++) {
+      var m = marks[i], parent = m.parentNode;
+      if (!parent) continue;
+      parent.replaceChild(document.createTextNode(m.textContent), m);
+      parent.normalize();
+    }
+    hits = [];
+    cur = -1;
+  }
+  function textNodes() {
+    var walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT, {
+      acceptNode: function(node) {
+        if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+        var p = node.parentNode;
+        if (!p) return NodeFilter.FILTER_REJECT;
+        var tag = p.nodeName;
+        if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'MARK') return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    });
+    var nodes = [], n;
+    while ((n = walker.nextNode())) nodes.push(n);
+    return nodes;
+  }
+  function run(q) {
+    query = q;
+    unwrap();
+    if (!q) { countEl.textContent = ''; return; }
+    var lower = q.toLowerCase(), nodes = textNodes();
+    for (var i = 0; i < nodes.length && hits.length < MAX; i++) {
+      var node = nodes[i], text = node.nodeValue, low = text.toLowerCase();
+      var at = low.indexOf(lower);
+      if (at < 0) continue;
+      var frag = document.createDocumentFragment(), pos = 0;
+      while (at >= 0) {
+        if (at > pos) frag.appendChild(document.createTextNode(text.slice(pos, at)));
+        var m = document.createElement('mark');
+        m.className = 'note-find-hit';
+        m.textContent = text.slice(at, at + q.length);
+        frag.appendChild(m);
+        hits.push(m);
+        pos = at + q.length;
+        at = hits.length < MAX ? low.indexOf(lower, pos) : -1;
+      }
+      if (pos < text.length) frag.appendChild(document.createTextNode(text.slice(pos)));
+      node.parentNode.replaceChild(frag, node);
+    }
+    if (!hits.length) { countEl.textContent = '0 / 0'; cur = -1; return; }
+    go(0);
+  }
+  function go(i) {
+    if (!hits.length) return;
+    if (cur >= 0 && hits[cur]) hits[cur].classList.remove('note-find-current');
+    cur = (i % hits.length + hits.length) % hits.length;
+    var m = hits[cur];
+    m.classList.add('note-find-current');
+    m.scrollIntoView({ block: 'center', behavior: 'auto' });
+    countEl.textContent = (cur + 1) + ' / ' + hits.length;
+  }
+  function open() {
+    if (bar.style.display !== 'flex') bar.style.display = 'flex';
+    input.focus();
+    input.select();
+  }
+  function close() {
+    bar.style.display = 'none';
+    unwrap();
+    countEl.textContent = '';
+    input.value = '';
+    query = '';
+  }
+  input.addEventListener('input', function() {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(function() { run(input.value.trim()); }, 200);
+  });
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); go(e.shiftKey ? cur - 1 : cur + 1); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); }
+  });
+  if (nextBtn) nextBtn.onclick = function() { go(cur + 1); };
+  if (prevBtn) prevBtn.onclick = function() { go(cur - 1); };
+  if (closeBtn) closeBtn.onclick = close;
+  if (openBtn) openBtn.onclick = open;
+  document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) { e.preventDefault(); open(); }
+  });
+  // 供自动化测试用
+  window.__noteFind = {
+    open: open, close: close, run: run, go: go,
+    state: function() { return { hits: hits.length, cur: cur, query: query, visible: bar.style.display === 'flex' }; }
+  };
+})();
 </script>
 
 <script>
