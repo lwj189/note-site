@@ -837,6 +837,49 @@ html.dark .note-header-actions .card-action-btn.active { background: #2e3550; }
   .note-toc-panel { left: 8px; right: 8px; width: auto; top: 56px; max-height: 50vh; }
 }
 
+/* 悬浮目录按钮：滚过一屏后常驻右下角，长笔记里随时开目录 */
+.note-toc-fab {
+  position: fixed;
+  bottom: 88px;
+  right: 32px;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 10px rgba(67,97,238,.3);
+  transition: all .2s;
+  z-index: 95;
+}
+.note-toc-fab:hover { background: var(--accent-hover); transform: translateY(-2px); box-shadow: 0 4px 14px rgba(67,97,238,.4); }
+.note-toc-fab.active { background: var(--accent-hover); }
+/* 从悬浮按钮打开时：面板贴着按钮向上弹出 */
+.note-toc-panel.from-fab { top: auto; bottom: 144px; right: 32px; max-height: 60vh; }
+/* 目录过滤框 */
+.note-toc-filter {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  font-size: .8rem;
+  font-family: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.note-toc-filter:focus { outline: none; border-color: var(--accent); }
+.note-toc-item.toc-item-active { background: #eef2ff; color: var(--accent); font-weight: 600; }
+html.dark .note-toc-item.toc-item-active { background: #2e3550; }
+@media (max-width: 900px) {
+  .note-toc-panel.from-fab { left: 8px; right: 8px; bottom: 144px; }
+}
+
 /* 双链 */
 .note-body a.wikilink { color: var(--accent); text-decoration: none; border-bottom: 1px dashed var(--accent); }
 .note-body a.wikilink:hover { border-bottom-style: solid; }

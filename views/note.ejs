@@ -62,8 +62,14 @@
 <!-- 目录大纲面板 -->
 <div id="note-toc-panel" class="note-toc-panel" style="display:none">
   <div class="note-toc-title">目录大纲</div>
+  <input id="note-toc-filter" class="note-toc-filter" type="search" placeholder="过滤标题…" style="display:none">
   <nav id="note-toc-list" class="note-toc-list"></nav>
 </div>
+
+<!-- 悬浮目录按钮：滚动一段后常驻右下角，长笔记里不用再回顶部 -->
+<button id="note-toc-fab" class="note-toc-fab" title="目录大纲（随时可点）" style="display:none" onclick="toggleToc(true)">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+</button>
 
 <!-- Image lightbox with zoom -->
 <div id="img-lightbox" class="img-lightbox" onclick="closeImgLightbox(event)">
@@ -130,15 +136,16 @@
 (function() {
   var body = document.querySelector('.note-body');
   var btn = document.getElementById('note-toc-btn');
+  var fab = document.getElementById('note-toc-fab');
   if (!body || !btn) return;
   var heads = body.querySelectorAll('h1, h2, h3, h4');
-  if (!heads.length) { btn.style.display = 'none'; return; }
+  if (!heads.length) { btn.style.display = 'none'; if (fab) fab.style.display = 'none'; return; }
   var items = [];
   heads.forEach(function(h, i) {
     if (!h.id) h.id = 'note-toc-h' + i;
     items.push({ el: h, level: +h.tagName[1], text: h.textContent.trim() });
   });
-  if (items.length < 2) { btn.style.display = 'none'; return; }
+  if (items.length < 2) { btn.style.display = 'none'; if (fab) fab.style.display = 'none'; return; }
   var list = document.getElementById('note-toc-list');
   if (!list) return;
   items.forEach(function(it) {
@@ -151,8 +158,10 @@
       it.el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       closeToc(); // 跳转后自动收起目录
     });
+    it.a = a;
     list.appendChild(a);
   });
+  var current = items[0];
   function markCurrent() {
     var anchor = window.scrollY + 80;
     var cur = items[0];
@@ -160,28 +169,66 @@
       var top = it.el.getBoundingClientRect().top + window.scrollY;
       if (top <= anchor) cur = it;
     });
+    current = cur;
     items.forEach(function(it) {
       it.el.classList.toggle('toc-active', it === cur);
+      if (it.a) it.a.classList.toggle('toc-item-active', it === cur);
     });
   }
   window.addEventListener('scroll', markCurrent, { passive: true });
   markCurrent();
+
+  // 打开面板时，把"当前章节"滚到面板中间：长目录里一眼看到自己在哪
+  window.__noteTocScrollActive = function() {
+    var panel = document.getElementById('note-toc-panel');
+    if (!panel || !current || !current.a) return;
+    panel.scrollTop = Math.max(0, current.a.offsetTop - panel.clientHeight / 2 + current.a.offsetHeight / 2);
+  };
+
+  // 标题过滤：长目录（≥20 条）里直接搜章节名，不用一页页翻
+  var filter = document.getElementById('note-toc-filter');
+  if (filter) {
+    if (items.length >= 20) filter.style.display = 'block';
+    filter.addEventListener('input', function() {
+      var q = filter.value.trim().toLowerCase();
+      items.forEach(function(it) {
+        if (!it.a) return;
+        it.a.style.display = (!q || it.a.textContent.toLowerCase().indexOf(q) >= 0) ? '' : 'none';
+      });
+      var panel = document.getElementById('note-toc-panel');
+      if (panel && !q) panel.scrollTop = 0;
+    });
+  }
+
+  // 悬浮目录按钮：滚过一屏就出现，长笔记里不用再回顶部
+  if (fab) {
+    var syncFab = function() { fab.style.display = window.scrollY > 300 ? 'flex' : 'none'; };
+    window.addEventListener('scroll', syncFab, { passive: true });
+    syncFab();
+  }
 })();
 
 function closeToc() {
   var panel = document.getElementById('note-toc-panel');
   var btn = document.getElementById('note-toc-btn');
+  var fab = document.getElementById('note-toc-fab');
   if (panel) panel.style.display = 'none';
   if (btn) btn.classList.remove('active');
+  if (fab) fab.classList.remove('active');
 }
 
-function toggleToc() {
+function toggleToc(fromFab) {
   var panel = document.getElementById('note-toc-panel');
   var btn = document.getElementById('note-toc-btn');
+  var fab = document.getElementById('note-toc-fab');
   if (!panel) return;
   if (panel.style.display === 'block') { closeToc(); return; }
+  // 从右下角悬浮按钮打开时，面板贴着按钮弹出（见 .note-toc-panel.from-fab）
+  panel.classList.toggle('from-fab', !!fromFab);
   panel.style.display = 'block';
-  if (btn) btn.classList.add('active');
+  if (btn) btn.classList.toggle('active', !fromFab);
+  if (fab) fab.classList.toggle('active', !!fromFab);
+  if (window.__noteTocScrollActive) window.__noteTocScrollActive();
 }
 
 // 点击目录面板和按钮之外的任何地方 → 收起目录（捕获阶段，避免被内部 stopPropagation 拦掉）
@@ -190,7 +237,8 @@ document.addEventListener('click', function(e) {
   if (!panel || panel.style.display !== 'block') return;
   if (panel.contains(e.target)) return;
   var btn = document.getElementById('note-toc-btn');
-  if (btn && btn.contains(e.target)) return;
+  var fab = document.getElementById('note-toc-fab');
+  if ((btn && btn.contains(e.target)) || (fab && fab.contains(e.target))) return;
   closeToc();
 }, true);
 
