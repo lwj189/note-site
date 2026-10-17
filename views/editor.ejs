@@ -69,7 +69,7 @@
           <option value="css" <%= selType === 'css' ? 'selected' : '' %>>CSS</option>
         </select>
       </div>
-      <div class="editor-field">
+      <div class="editor-field editor-field-wide">
         <label>笔记本 / 标签（点击选择，可多选）</label>
         <div id="nb-picker" class="nb-picker"></div>
         <input type="hidden" name="tags" id="e-tags" value="<%= typeof note !== 'undefined' && note.tags ? note.tags.join(', ') : (typeof prefill !== 'undefined' ? prefill.tags : '') %>">
