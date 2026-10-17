@@ -138,15 +138,41 @@ function removeCard(filename) {
   if (count === 0) location.reload();
 }
 
-// Drag-drop support
+// Drag-drop support（只对「拖文件进来」响应；拖动页面内的图片不会闪）
 (function() {
   var zone = document.getElementById('gallery-drop-zone');
-  document.addEventListener('dragenter', function(e) { e.preventDefault(); zone.style.display = 'block'; });
-  document.addEventListener('dragover', function(e) { e.preventDefault(); zone.style.display = 'block'; });
-  document.addEventListener('dragleave', function(e) { e.preventDefault(); zone.style.display = 'none'; });
+  var depth = 0;
+  function hasFileDrag(e) {
+    var dt = e.dataTransfer;
+    if (!dt || !dt.types) return false;
+    for (var i = 0; i < dt.types.length; i++) if (dt.types[i] === 'Files') return true;
+    return false;
+  }
+  function show() { if (zone.style.display !== 'block') zone.style.display = 'block'; }
+  function hide() { depth = 0; if (zone.style.display !== 'none') zone.style.display = 'none'; }
+  document.addEventListener('dragenter', function(e) {
+    if (!hasFileDrag(e)) return;
+    e.preventDefault();
+    depth++;
+    show();
+  });
+  document.addEventListener('dragover', function(e) {
+    if (!hasFileDrag(e)) return;
+    e.preventDefault();
+    if (depth < 1) depth = 1;
+    show();
+  });
+  document.addEventListener('dragleave', function(e) {
+    if (!hasFileDrag(e)) return;
+    depth = Math.max(0, depth - 1);
+    if (depth === 0 || !e.relatedTarget) hide();
+  });
+  document.addEventListener('dragend', hide);
+  document.addEventListener('drop', hide);
+  zone.addEventListener('dragover', function(e) { if (hasFileDrag(e)) e.preventDefault(); });
   zone.addEventListener('drop', function(e) {
     e.preventDefault();
-    zone.style.display = 'none';
+    hide();
     var files = e.dataTransfer.files;
     if (files.length) { document.getElementById('gallery-upload-input').files = files; document.getElementById('gallery-upload-input').dispatchEvent(new Event('change')); }
   });

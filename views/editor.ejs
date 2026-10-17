@@ -939,17 +939,32 @@ function bindPasteAndDrop() {
     e.preventDefault();
     insertImageFiles(files);
   });
-  ['dragenter', 'dragover'].forEach(function(t) {
-    area.addEventListener(t, function(e) {
-      if (!e.dataTransfer) return;
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'copy';
-      area.classList.add('dragover');
-    });
+  // 只有拖进来的真的是「文件」时才响应，避免拖动页面内文字/图片时高亮乱闪
+  let dragDepth = 0;
+  function hasFileDrag(e) {
+    const dt = e.dataTransfer;
+    if (!dt || !dt.types) return false;
+    for (const t of dt.types) if (t === 'Files') return true;
+    return false;
+  }
+  area.addEventListener('dragenter', function(e) {
+    if (!hasFileDrag(e)) return;
+    e.preventDefault();
+    dragDepth++;
+    area.classList.add('dragover');
   });
-  ['dragleave', 'dragend'].forEach(function(t) {
-    area.addEventListener(t, function() { area.classList.remove('dragover'); });
+  area.addEventListener('dragover', function(e) {
+    if (!hasFileDrag(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    area.classList.add('dragover');
   });
+  area.addEventListener('dragleave', function(e) {
+    if (!hasFileDrag(e)) return;
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (dragDepth === 0 || !e.relatedTarget) area.classList.remove('dragover');
+  });
+  area.addEventListener('dragend', function() { dragDepth = 0; area.classList.remove('dragover'); });
   area.addEventListener('drop', async function(e) {
     if (!e.dataTransfer) return;
     e.preventDefault();
