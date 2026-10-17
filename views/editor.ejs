@@ -891,25 +891,26 @@ async function uploadOneImage(file) {
   const res = await fetch('/api/upload-image', { method: 'POST', body: fd });
   const data = (typeof readJSON === 'function') ? await readJSON(res) : await res.json();
   if (!data || !data.ok) throw new Error((data && data.error) || '上传失败');
-  return data.md || ('![](' + data.url + ')');
+  return { md: data.md || ('![](' + data.url + ')'), url: data.url, duplicated: !!data.duplicated };
 }
 
 async function insertImageFiles(files) {
   const imgs = Array.prototype.slice.call(files).filter(f => /^image\//i.test(f.type) || /\.(png|jpe?g|gif|webp|bmp)$/i.test(f.name || ''));
   if (!imgs.length) return 0;
   showMsg('上传 ' + imgs.length + ' 张图片…');
-  let n = 0;
+  let n = 0, dup = 0;
   for (const f of imgs) {
     try {
-      const md = await uploadOneImage(f);
-      insertAtCursor((n ? '\n' : '') + md + '\n');
+      const r = await uploadOneImage(f);
+      insertAtCursor((n ? '\n' : '') + r.md + '\n');
+      if (r.duplicated) dup++;
       n++;
     } catch (err) {
       showMsg('图片上传失败：' + err.message, true);
     }
   }
   if (n) {
-    showMsg('已插入 ' + n + ' 张图片');
+    showMsg('已插入 ' + n + ' 张图片' + (dup ? '（' + dup + ' 张图库里已有，复用原图、没有重复保存）' : ''));
     setTimeout(showPreviewAfterInsert, 150);
   }
   return n;

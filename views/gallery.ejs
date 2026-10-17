@@ -194,7 +194,7 @@ document.getElementById('gallery-upload-input').addEventListener('change', async
     const data = await res.json();
     if (data.ok) {
       r.className = 'result success';
-      r.textContent = '已上传 ' + data.count + ' 张图片';
+      r.textContent = '已上传 ' + data.count + ' 张图片' + (data.reused ? '（' + data.reused + ' 张图库里已有，直接复用原图）' : '');
       this.value = '';
       location.reload();
     } else {

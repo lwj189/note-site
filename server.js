@@ -318,6 +318,43 @@ const imageUpload = multer({
   }
 });
 
+// ---- 图片去重：内容相同（sha1）只存一份，重复上传直接复用已有文件 ----
+let imgHashIndex = null;
+function sha1OfFile(p) {
+  return crypto.createHash('sha1').update(fs.readFileSync(p)).digest('hex');
+}
+function imageHashIndex() {
+  if (imgHashIndex) return imgHashIndex;
+  imgHashIndex = new Map();
+  try {
+    for (const f of fs.readdirSync(UPLOADS_DIR)) {
+      if (!/\.(png|jpe?g|gif|webp|bmp)$/i.test(f)) continue;
+      try {
+        const h = sha1OfFile(path.join(UPLOADS_DIR, f));
+        if (!imgHashIndex.has(h)) imgHashIndex.set(h, f);
+      } catch (e) {}
+    }
+  } catch (e) {}
+  return imgHashIndex;
+}
+// 若与已有图片内容相同：删掉刚写入的新文件，返回已有文件名；否则登记并返回 null
+function dedupeImage(file) {
+  const full = path.join(UPLOADS_DIR, file.filename);
+  let hash;
+  try { hash = sha1OfFile(full); } catch (e) { return null; }
+  const index = imageHashIndex();
+  const existing = index.get(hash);
+  if (existing && existing !== file.filename) {
+    if (fs.existsSync(path.join(UPLOADS_DIR, existing))) {
+      try { fs.unlinkSync(full); } catch (e) {}
+      return existing;
+    }
+    index.delete(hash);
+  }
+  index.set(hash, file.filename);
+  return null;
+}
+
 // ---- Helpers ----
 const LANG_MAP = {
   '.cpp': 'cpp', '.c': 'c', '.h': 'c', '.hpp': 'cpp',
@@ -604,16 +641,25 @@ app.post('/api/parse-docx', docxUpload.single('file'), (req, res) => {
 });
 app.post('/api/upload-image', imageUpload.single('image'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: '请选择图片' });
-  const url = '/img/' + req.file.filename;
+  const existing = dedupeImage(req.file);
+  const filename = existing || req.file.filename;
+  const url = '/img/' + encodeURIComponent(filename);
   debouncedGitSync();
-  res.json({ ok: true, url, md: '![' + (req.body.alt || 'image') + '](' + url + ')' });
+  res.json({ ok: true, url, md: '![' + (req.body.alt || 'image') + '](' + url + ')', duplicated: !!existing });
 });
 
 // Multi image upload
 app.post('/api/upload-images', imageUpload.array('images', 10), (req, res) => {
   if (!req.files || req.files.length === 0) return res.status(400).json({ error: '请选择图片' });
+  const files = [];
+  let reused = 0;
+  for (const f of req.files) {
+    const existing = dedupeImage(f);
+    if (existing) reused++;
+    files.push({ url: '/img/' + encodeURIComponent(existing || f.filename), duplicated: !!existing });
+  }
   debouncedGitSync();
-  res.json({ ok: true, count: req.files.length });
+  res.json({ ok: true, count: files.length - reused, reused, total: files.length, files });
 });
 
 // List images
@@ -638,6 +684,7 @@ app.delete('/api/images/:filename', (req, res) => {
     return res.json({ ok: false, referenced: refs });
   }
   fs.unlinkSync(filepath);
+  imgHashIndex = null; // 删图后重建哈希索引，避免把新上传误判成复用已删图
   debouncedGitSync();
   res.json({ ok: true });
 });
