@@ -1016,6 +1016,122 @@ app.delete('/api/notebooks/:name', (req, res) => {
   res.json({ ok: true });
 });
 
+// ---- 组织与批量：批量操作 + 标签管理 ----
+
+// 批量：打标签 / 换笔记本 / 删除（软删到回收站）
+app.post('/api/notes/batch', (req, res) => {
+  const body = req.body || {};
+  const slugs = Array.isArray(body.slugs) ? body.slugs.filter(s => typeof s === 'string' && s) : [];
+  const action = body.action;
+  if (!slugs.length) return res.status(400).json({ error: '没有选中笔记' });
+  if (!['tag', 'notebook', 'delete'].includes(action)) return res.status(400).json({ error: '未知操作' });
+
+  const notebookNames = getNotebookNames();
+  const tagNames = Array.isArray(body.tags)
+    ? body.tags.map(t => String(t).trim()).filter(Boolean)
+    : [];
+  const targetNotebook = typeof body.notebook === 'string' ? body.notebook.trim() : '';
+  if (action === 'tag' && !tagNames.length) return res.status(400).json({ error: '请填写标签' });
+  if (action === 'notebook' && targetNotebook && !notebookNames.includes(targetNotebook)) {
+    return res.status(400).json({ error: '笔记本不存在：' + targetNotebook });
+  }
+
+  const notes = loadNotes();
+  const set = new Set(slugs);
+  const now = new Date().toISOString();
+  let changed = 0;
+  notes.forEach(n => {
+    if (!set.has(n.slug) || n.deletedAt) return;
+    if (action === 'tag') {
+      if (!Array.isArray(n.tags)) n.tags = [];
+      let touched = false;
+      tagNames.forEach(t => { if (!n.tags.includes(t)) { n.tags.push(t); touched = true; } });
+      if (touched) { n.updatedAt = now; changed++; }
+    } else if (action === 'notebook') {
+      const before = (n.tags || []).join('\u0000');
+      let tags = (n.tags || []).filter(t => !notebookNames.includes(t));
+      if (targetNotebook) tags.push(targetNotebook);
+      if (tags.join('\u0000') !== before) { n.tags = tags; n.updatedAt = now; changed++; }
+    } else if (action === 'delete') {
+      n.deletedAt = now;
+      changed++;
+    }
+  });
+  if (changed) { saveNotes(notes); debouncedGitSync(); }
+  res.json({ ok: true, changed, action });
+});
+
+// 标签管理页
+app.get('/tags', (req, res) => {
+  const notes = loadActiveNotes();
+  const notebooks = loadNotebooks().map(n => typeof n === 'string' ? { name: n, color: '#4361ee', icon: '📁' } : n);
+  const counts = {};
+  notes.forEach(n => (n.tags || []).forEach(t => { counts[t] = (counts[t] || 0) + 1; }));
+  const nbNames = notebooks.map(n => n.name);
+  const nbList = notebooks
+    .map(n => ({ name: n.name, color: n.color || '#4361ee', icon: n.icon || '📁', count: counts[n.name] || 0 }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'zh'));
+  const freeTags = Object.keys(counts)
+    .filter(t => !nbNames.includes(t))
+    .map(t => ({ name: t, count: counts[t] }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'zh'));
+  res.render('tags', { notebooks: nbList, freeTags, site: SITE_TITLE, current: 'tags' });
+});
+
+// 标签重命名（目标已存在时自动合并，笔记本列表同步）
+app.post('/api/tags/rename', (req, res) => {
+  const from = (req.body.from || '').trim();
+  const to = (req.body.to || '').trim();
+  if (!from || !to) return res.status(400).json({ error: '名称不能为空' });
+  if (from === to) return res.json({ ok: true, changed: 0 });
+
+  const notes = loadNotes();
+  const now = new Date().toISOString();
+  let changed = 0;
+  notes.forEach(n => {
+    if (!Array.isArray(n.tags) || !n.tags.includes(from)) return;
+    const mapped = n.tags.map(t => t === from ? to : t);
+    n.tags = mapped.filter((t, i) => mapped.indexOf(t) === i);
+    n.updatedAt = now;
+    changed++;
+  });
+
+  const notebooks = loadNotebooks();
+  const idx = notebooks.findIndex(n => (typeof n === 'string' ? n : n.name) === from);
+  if (idx !== -1) {
+    const nbNames = getNotebookNames();
+    if (nbNames.includes(to)) {
+      notebooks.splice(idx, 1); // 合并进已有笔记本，删掉旧条目
+    } else {
+      const old = notebooks[idx];
+      notebooks[idx] = typeof old === 'string' ? to : Object.assign({}, old, { name: to });
+    }
+    saveNotebooks(notebooks);
+  }
+  if (changed) { saveNotes(notes); debouncedGitSync(); }
+  res.json({ ok: true, changed });
+});
+
+// 删除标签（从所有笔记移除；若是笔记本，同时删掉笔记本条目）
+app.post('/api/tags/delete', (req, res) => {
+  const name = (req.body.name || '').trim();
+  if (!name) return res.status(400).json({ error: '名称不能为空' });
+  const notes = loadNotes();
+  const now = new Date().toISOString();
+  let changed = 0;
+  notes.forEach(n => {
+    if (!Array.isArray(n.tags) || !n.tags.includes(name)) return;
+    n.tags = n.tags.filter(t => t !== name);
+    n.updatedAt = now;
+    changed++;
+  });
+  const notebooks = loadNotebooks();
+  const idx = notebooks.findIndex(n => (typeof n === 'string' ? n : n.name) === name);
+  if (idx !== -1) { notebooks.splice(idx, 1); saveNotebooks(notebooks); }
+  if (changed) { saveNotes(notes); debouncedGitSync(); }
+  res.json({ ok: true, changed });
+});
+
 // Render markdown preview
 app.post('/api/render', (req, res) => {
   const { content, type } = req.body;

@@ -55,6 +55,11 @@
       <span class="nav-card-label">图库</span>
       <span class="nav-card-arrow">→</span>
     </a>
+    <a href="/tags" class="nav-card nav-tags<%= typeof current !== 'undefined' && current === 'tags' ? ' active' : '' %>">
+      <span class="nav-card-icon">🏷️</span>
+      <span class="nav-card-label">标签</span>
+      <span class="nav-card-arrow">→</span>
+    </a>
     <a href="/trash" class="nav-card nav-trash<%= typeof current !== 'undefined' && current === 'trash' ? ' active' : '' %>">
       <span class="nav-card-icon">🗑️</span>
       <span class="nav-card-label">回收站</span>

@@ -1,0 +1,124 @@
+<%- include('header', { heading: '标签管理', current: 'tags' }) %>
+
+<div class="list-header">
+  <h1>标签管理</h1>
+  <p>共 <%= notebooks.length + freeTags.length %> 个标签。把名字改成已有标签会<b>自动合并</b>；删除只是把标签从笔记上摘掉，笔记本身不会删。</p>
+</div>
+
+<div class="tags-page">
+  <section class="tags-section">
+    <div class="tags-section-head">
+      <h2>📁 笔记本 <span class="tags-count"><%= notebooks.length %></span></h2>
+      <button class="btn btn-sm" onclick="newNotebook()">+ 新建笔记本</button>
+    </div>
+    <% if (!notebooks.length) { %>
+    <div class="tags-empty">还没有笔记本</div>
+    <% } %>
+    <% notebooks.forEach(nb => { %>
+    <div class="tag-row" data-name="<%= nb.name %>" data-kind="notebook">
+      <span class="tag-row-icon"><%= nb.icon %></span>
+      <a class="tag-row-name" href="/notebook/<%= encodeURIComponent(nb.name) %>" title="查看该笔记本"><%= nb.name %></a>
+      <span class="tag-row-count"><%= nb.count %> 篇</span>
+      <span class="tag-row-actions">
+        <button class="tag-btn tag-rename">重命名</button>
+        <button class="tag-btn tag-btn-danger tag-del">删除</button>
+      </span>
+    </div>
+    <% }) %>
+  </section>
+
+  <section class="tags-section">
+    <div class="tags-section-head">
+      <h2>🏷️ 标签 <span class="tags-count"><%= freeTags.length %></span></h2>
+    </div>
+    <% if (!freeTags.length) { %>
+    <div class="tags-empty">还没有零散标签</div>
+    <% } %>
+    <% freeTags.forEach(t => { %>
+    <div class="tag-row" data-name="<%= t.name %>" data-kind="tag">
+      <span class="tag-row-icon">🏷️</span>
+      <a class="tag-row-name" href="/notebook/<%= encodeURIComponent(t.name) %>" title="查看带该标签的笔记"><%= t.name %></a>
+      <span class="tag-row-count"><%= t.count %> 篇</span>
+      <span class="tag-row-actions">
+        <button class="tag-btn tag-rename">重命名</button>
+        <button class="tag-btn tag-btn-danger tag-del">删除</button>
+      </span>
+    </div>
+    <% }) %>
+  </section>
+</div>
+
+<script src="/ui-dialog.js"></script>
+<script>
+(function () {
+  var page = document.querySelector('.tags-page');
+  if (!page) return;
+
+  function rowOf(el) { return el.closest ? el.closest('.tag-row') : null; }
+
+  page.addEventListener('click', function (e) {
+    var row = rowOf(e.target);
+    if (!row) return;
+    var name = row.dataset.name;
+    var kind = row.dataset.kind;
+    if (e.target.classList.contains('tag-rename')) { e.preventDefault(); renameTag(name, kind); }
+    else if (e.target.classList.contains('tag-del')) { e.preventDefault(); deleteTag(name, kind); }
+  });
+
+  function postJSON(url, body) {
+    return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || '操作失败'); return j; }); });
+  }
+
+  window.renameTag = function (name, kind) {
+    return uiPrompt({
+      title: (kind === 'notebook' ? '笔记本' : '标签') + '重命名',
+      message: '改成已有名字会自动合并。',
+      value: name,
+      okText: '重命名'
+    }).then(function (to) {
+      if (to === null) return;
+      to = to.trim();
+      if (!to || to === name) return;
+      return postJSON('/api/tags/rename', { from: name, to: to })
+        .then(function () { location.reload(); })
+        .catch(function (err) { uiAlert(err.message); });
+    });
+  };
+
+  window.deleteTag = function (name, kind) {
+    var msg = kind === 'notebook'
+      ? '笔记本会从侧边栏消失，笔记只是去掉这个标签，不会被删除。'
+      : '会从所有笔记上摘掉这个标签，笔记本身不会被删除。';
+    return uiConfirm({
+      title: '删除' + (kind === 'notebook' ? '笔记本' : '标签') + '「' + name + '」',
+      message: msg,
+      okText: '删除',
+      danger: true
+    }).then(function (yes) {
+      if (!yes) return;
+      return postJSON('/api/tags/delete', { name: name })
+        .then(function () { location.reload(); })
+        .catch(function (err) { uiAlert(err.message); });
+    });
+  };
+
+  window.newNotebook = function () {
+    return uiPrompt({
+      title: '新建笔记本',
+      message: '给新笔记本起个名字：',
+      placeholder: '例如：C++ 学习',
+      okText: '创建'
+    }).then(function (name) {
+      if (name === null) return;
+      name = name.trim();
+      if (!name) return;
+      return postJSON('/api/notebooks', { name: name })
+        .then(function () { location.reload(); })
+        .catch(function (err) { uiAlert(err.message); });
+    });
+  };
+})();
+</script>
+
+<%- include('footer') %>

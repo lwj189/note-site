@@ -2109,3 +2109,48 @@ html.dark .editor-area.dragover { background: rgba(129,140,248,.12); }
   border-radius: 999px; padding: 3px 10px; pointer-events: none;
 }
 .editor-area { position: relative; }
+
+/* ================= 组织与批量（F）：多选批量操作 + 标签管理 ================= */
+.list-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.list-header-main { min-width: 0; }
+.list-header .btn { margin: 0; flex: none; }
+
+.batch-check { display: none; width: 17px; height: 17px; flex: none; accent-color: var(--accent); cursor: pointer; }
+body.select-mode .batch-check { display: block; }
+body.select-mode .note-card-link { pointer-events: none; }
+body.select-mode .note-card { cursor: pointer; -webkit-user-select: none; user-select: none; }
+body.select-mode .note-card .card-actions-inline { opacity: 1; }
+.note-card.selected { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(67,97,238,.14); }
+
+.batch-bar { position: sticky; bottom: 18px; z-index: 40; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 14px; margin-top: 14px; max-width: 900px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 10px 28px rgba(0,0,0,.14); }
+.batch-bar #batch-count { font-size: .85rem; color: var(--muted); margin-right: 4px; }
+
+/* 标签管理页 */
+.tags-page { display: flex; flex-direction: column; gap: 22px; max-width: 900px; }
+.tags-section { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+.tags-section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.tags-section-head h2 { font-size: 1rem; margin: 0; display: flex; align-items: center; gap: 8px; }
+.tags-count { font-size: .72rem; color: var(--muted); background: var(--bg); border: 1px solid var(--border); border-radius: 20px; padding: 1px 8px; font-weight: 500; }
+.tags-empty { color: var(--muted); font-size: .85rem; padding: 8px 2px; }
+.tag-row { display: flex; align-items: center; gap: 10px; padding: 9px 4px; border-top: 1px solid var(--border); }
+.tag-row:first-of-type { border-top: none; }
+.tag-row-icon { width: 22px; text-align: center; flex: none; }
+.tag-row-name { font-size: .92rem; color: inherit; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tag-row-name:hover { color: var(--accent); }
+.tag-row-count { font-size: .75rem; color: var(--muted); margin-left: auto; white-space: nowrap; }
+.tag-row-actions { display: flex; gap: 6px; flex: none; }
+.tag-btn { border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: .75rem; padding: 3px 10px; border-radius: 6px; cursor: pointer; }
+.tag-btn:hover { color: var(--accent); border-color: var(--accent); }
+.tag-btn-danger:hover { color: #dc2626; border-color: #dc2626; }
+
+/* ---- 页面内对话框（Electron 不支持 window.prompt） ---- */
+.uid-overlay { position: fixed; inset: 0; z-index: 900; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.uid-box { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 20px 60px rgba(0,0,0,.25); width: 100%; max-width: 430px; padding: 20px; }
+.uid-title { font-size: 1rem; font-weight: 600; margin-bottom: 8px; }
+.uid-msg { font-size: .86rem; color: var(--muted); white-space: pre-wrap; line-height: 1.6; margin-bottom: 12px; }
+.uid-input { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: .95rem; background: var(--card-bg); color: inherit; margin-bottom: 12px; font-family: inherit; }
+.uid-input:focus { outline: none; border-color: var(--accent); }
+.uid-options { display: flex; flex-direction: column; gap: 6px; max-height: 45vh; overflow: auto; margin-bottom: 12px; }
+.uid-option { text-align: left; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--card-bg); color: inherit; font-size: .9rem; cursor: pointer; font-family: inherit; }
+.uid-option:hover { border-color: var(--accent); color: var(--accent); }
+.uid-actions { display: flex; justify-content: flex-end; gap: 8px; }
